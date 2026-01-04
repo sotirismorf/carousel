@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important
+
+Always run `npm run dev` in the background at the start of each session to keep the dev server running.
+
 ## Commands
 
 ```bash

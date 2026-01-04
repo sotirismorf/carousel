@@ -10,10 +10,7 @@
   export let fontScale = 1;
   export let fontColor = '#ffffff';
   export let fontFamily = '';
-  export let gradientColor1 = '#667eea';
-  export let gradientColor2 = '#764ba2';
-  export let gradientDirection = 135;
-  export let gradientType = 'linear';
+  export let gradientColors = ['#667eea', '#764ba2', '#f093fb'];
   export let padding = 60;
   export let corners = {
     topLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
@@ -21,26 +18,36 @@
     bottomLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
     bottomRight: { enabled: false, type: 'text', text: '', image: null, size: 24 },
   };
+  export let continuousBackground = false;
+  export let slideIndex = 0;
+  export let totalSlides = 1;
 
-  $: verticalJustify = {
-    top: 'flex-start',
-    center: 'center',
-    bottom: 'flex-end',
-  }[verticalAlign] || 'center';
+  $: verticalJustify = { top: 'flex-start', center: 'center', bottom: 'flex-end' }[verticalAlign] || 'center';
 
-  $: backgroundStyle = gradientType === 'linear'
-    ? `linear-gradient(${gradientDirection}deg, ${gradientColor1} 0%, ${gradientColor2} 100%)`
-    : `radial-gradient(circle, ${gradientColor1} 0%, ${gradientColor2} 100%)`;
+  // Predefined positions for gradient mesh blobs
+  const MESH_POSITIONS = [
+    '40% 20%', '80% 0%', '0% 50%',
+    '80% 50%', '0% 100%', '80% 100%', '0% 0%'
+  ];
+
+  $: backgroundColor = gradientColors[0] || '#667eea';
+  $: backgroundImage = gradientColors.map((color, i) => {
+    const pos = MESH_POSITIONS[i % MESH_POSITIONS.length];
+    return `radial-gradient(at ${pos}, ${color} 0px, transparent 50%)`;
+  }).join(',');
+
+  // For continuous background, we stretch the gradient across all slides
+  $: backgroundSize = continuousBackground ? `${totalSlides * 100}% 100%` : '100% 100%';
+  $: backgroundPosition = continuousBackground ? `${(slideIndex / (totalSlides - 1 || 1)) * 100}% 0` : '0 0';
 
   $: baseFontSize = 36 * fontScale;
 
-  $: fontFamilyStyle = fontFamily
-    ? `${fontFamily}, 'Segoe UI', system-ui, -apple-system, sans-serif`
-    : `'Segoe UI', system-ui, -apple-system, sans-serif`;
+  $: font = fontFamily
+    ? `${fontFamily}, 'Segoe UI', system-ui, sans-serif`
+    : `'Segoe UI', system-ui, sans-serif`;
 
-  function parseCornerText(text) {
-    if (!text) return '';
-    return marked.parseInline(text);
+  function parseInline(text) {
+    return text ? marked.parseInline(text) : '';
   }
 </script>
 
@@ -49,56 +56,40 @@
   style:width="{width}px"
   style:height="{height}px"
   style:transform="scale({scale})"
-  style:background={backgroundStyle}
+  style:background-color={backgroundColor}
+  style:background-image={backgroundImage}
+  style:background-size={backgroundSize}
+  style:background-position={backgroundPosition}
   style:align-items={verticalJustify}
   style:padding="{padding}px"
 >
-  {#if corners.topLeft.enabled}
-    <div class="corner top-left" style:color={fontColor} style:font-family={fontFamilyStyle} style:font-size="{corners.topLeft.size}px">
-      {#if corners.topLeft.type === 'image' && corners.topLeft.image}
-        <img src={corners.topLeft.image} alt="" style:height="{corners.topLeft.size * 2}px" />
-      {:else}
-        {@html parseCornerText(corners.topLeft.text)}
-      {/if}
-    </div>
-  {/if}
-
-  {#if corners.topRight.enabled}
-    <div class="corner top-right" style:color={fontColor} style:font-family={fontFamilyStyle} style:font-size="{corners.topRight.size}px">
-      {#if corners.topRight.type === 'image' && corners.topRight.image}
-        <img src={corners.topRight.image} alt="" style:height="{corners.topRight.size * 2}px" />
-      {:else}
-        {@html parseCornerText(corners.topRight.text)}
-      {/if}
-    </div>
-  {/if}
-
-  {#if corners.bottomLeft.enabled}
-    <div class="corner bottom-left" style:color={fontColor} style:font-family={fontFamilyStyle} style:font-size="{corners.bottomLeft.size}px">
-      {#if corners.bottomLeft.type === 'image' && corners.bottomLeft.image}
-        <img src={corners.bottomLeft.image} alt="" style:height="{corners.bottomLeft.size * 2}px" />
-      {:else}
-        {@html parseCornerText(corners.bottomLeft.text)}
-      {/if}
-    </div>
-  {/if}
-
-  {#if corners.bottomRight.enabled}
-    <div class="corner bottom-right" style:color={fontColor} style:font-family={fontFamilyStyle} style:font-size="{corners.bottomRight.size}px">
-      {#if corners.bottomRight.type === 'image' && corners.bottomRight.image}
-        <img src={corners.bottomRight.image} alt="" style:height="{corners.bottomRight.size * 2}px" />
-      {:else}
-        {@html parseCornerText(corners.bottomRight.text)}
-      {/if}
-    </div>
-  {/if}
+  {#each ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as pos}
+    {#if corners[pos].enabled}
+      <div
+        class="corner {pos}"
+        style:color={fontColor}
+        style:font-family={font}
+        style:font-size="{corners[pos].size}px"
+        style:top={pos.includes('top') ? `${padding}px` : 'auto'}
+        style:bottom={pos.includes('bottom') ? `${padding}px` : 'auto'}
+        style:left={pos.includes('Left') ? `${padding}px` : 'auto'}
+        style:right={pos.includes('Right') ? `${padding}px` : 'auto'}
+      >
+        {#if corners[pos].type === 'image' && corners[pos].image}
+          <img src={corners[pos].image} alt="" style:height="{corners[pos].size * 2}px" />
+        {:else}
+          {@html parseInline(corners[pos].text)}
+        {/if}
+      </div>
+    {/if}
+  {/each}
 
   <div
     class="slide-content"
     style:text-align={textAlign}
     style:font-size="{baseFontSize}px"
     style:color={fontColor}
-    style:font-family={fontFamilyStyle}
+    style:font-family={font}
   >
     {@html html}
   </div>
@@ -119,33 +110,18 @@
     font-weight: 500;
     z-index: 10;
     max-width: 35%;
+    line-height: 1;
   }
 
   .corner img {
+    display: block;
     width: auto;
     max-width: 100%;
     object-fit: contain;
   }
 
-  .corner.top-left {
-    top: 30px;
-    left: 30px;
-  }
-
-  .corner.top-right {
-    top: 30px;
-    right: 30px;
-    text-align: right;
-  }
-
-  .corner.bottom-left {
-    bottom: 30px;
-    left: 30px;
-  }
-
-  .corner.bottom-right {
-    bottom: 30px;
-    right: 30px;
+  .corner.topRight,
+  .corner.bottomRight {
     text-align: right;
   }
 
@@ -158,27 +134,27 @@
   .slide-content :global(h1) {
     font-size: 2em;
     font-weight: 700;
-    margin: 0 0 0.4em 0;
+    margin: 0 0 0.4em;
     line-height: 1.2;
   }
 
   .slide-content :global(h2) {
     font-size: 1.55em;
     font-weight: 600;
-    margin: 0 0 0.4em 0;
+    margin: 0 0 0.4em;
     line-height: 1.3;
   }
 
   .slide-content :global(h3) {
     font-size: 1.22em;
     font-weight: 600;
-    margin: 0 0 0.4em 0;
+    margin: 0 0 0.4em;
   }
 
   .slide-content :global(p) {
     font-size: 1em;
     line-height: 1.5;
-    margin: 0 0 0.5em 0;
+    margin: 0 0 0.5em;
   }
 
   .slide-content :global(ul),
@@ -197,7 +173,7 @@
   .slide-content :global(code) {
     background: rgba(0, 0, 0, 0.3);
     padding: 0.1em 0.3em;
-    border-radius: 6px;
+    border-radius: 4px;
     font-family: 'Fira Code', 'Consolas', monospace;
     font-size: 0.9em;
   }
@@ -205,7 +181,7 @@
   .slide-content :global(pre) {
     background: rgba(0, 0, 0, 0.3);
     padding: 0.7em;
-    border-radius: 12px;
+    border-radius: 8px;
     text-align: left;
     overflow-x: auto;
   }
@@ -215,26 +191,16 @@
     padding: 0;
   }
 
-  .slide-content :global(strong) {
-    font-weight: 700;
-  }
-
-  .slide-content :global(em) {
-    font-style: italic;
-  }
+  .slide-content :global(strong) { font-weight: 700; }
+  .slide-content :global(em) { font-style: italic; }
 
   .slide-content :global(blockquote) {
-    border-left: 6px solid rgba(255, 255, 255, 0.5);
+    border-left: 4px solid rgba(255, 255, 255, 0.5);
     padding-left: 0.7em;
     margin: 0.5em 0;
     font-style: italic;
   }
 
-  .corner :global(strong) {
-    font-weight: 700;
-  }
-
-  .corner :global(em) {
-    font-style: italic;
-  }
+  .corner :global(strong) { font-weight: 700; }
+  .corner :global(em) { font-style: italic; }
 </style>

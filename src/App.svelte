@@ -1,31 +1,43 @@
 <script>
-  import { tick } from 'svelte';
   import Slide from './lib/Slide.svelte';
   import { parseAndSplitMarkdown } from './lib/utils/markdown.js';
   import { exportSlidesToZip } from './lib/utils/export.js';
 
+  import { Button } from '$lib/components/ui/button';
+  import { Switch } from '$lib/components/ui/switch';
+  import * as Select from '$lib/components/ui/select';
+  import { Slider } from '$lib/components/ui/slider';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Separator } from '$lib/components/ui/separator';
+
+  // Constants
   const DIMENSIONS = {
     square: { width: 1080, height: 1080, label: 'Square (1:1)' },
     portrait: { width: 1080, height: 1350, label: 'Portrait (4:5)' },
     landscape: { width: 1080, height: 608, label: 'Landscape (16:9)' },
   };
 
-  const GRADIENT_DIRECTIONS = [
-    { value: 0, label: 'Top' },
-    { value: 45, label: 'Top Right' },
-    { value: 90, label: 'Right' },
-    { value: 135, label: 'Bottom Right' },
-    { value: 180, label: 'Bottom' },
-    { value: 225, label: 'Bottom Left' },
-    { value: 270, label: 'Left' },
-    { value: 315, label: 'Top Left' },
+
+  const CORNERS = [
+    { key: 'topLeft', label: 'Top Left', short: 'TL' },
+    { key: 'topRight', label: 'Top Right', short: 'TR' },
+    { key: 'bottomLeft', label: 'Bottom Left', short: 'BL' },
+    { key: 'bottomRight', label: 'Bottom Right', short: 'BR' },
   ];
 
-  const CORNER_POSITIONS = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+  const EXPORT_SCALES = [
+    { value: 1, label: 'Standard', desc: '1080px' },
+    { value: 2, label: 'High', desc: '2160px' },
+    { value: 3, label: 'Ultra', desc: '3240px' },
+  ];
 
-  let selectedDimension = 'square';
-  let isExporting = false;
-  let markdownText = `# Welcome!
+  // State
+  let selectedDimension = $state('square');
+  let exportScale = $state(2);  // Default to High (2x)
+  let isExporting = $state(false);
+  let editorCollapsed = $state(false);
+  let markdownText = $state(`# Welcome!
 
 This is a **markdown to carousel** demo.
 
@@ -33,7 +45,7 @@ This is a **markdown to carousel** demo.
 
 ## How It Works
 
-- Write markdown on the left
+- Write markdown on the right
 - See slides update in real-time
 - Export as PNG images
 
@@ -49,44 +61,52 @@ Use \`---\` to separate slides.
 
 # Get Started!
 
-Edit this text to create your own carousel.`;
+Edit this text to create your own carousel.`);
 
   // Style options
-  let textAlign = 'center';
-  let verticalAlign = 'center';
-  let fontScale = 1;
-  let fontColor = '#ffffff';
-  let fontFamily = '';
-  let gradientColor1 = '#667eea';
-  let gradientColor2 = '#764ba2';
-  let gradientDirection = 135;
-  let gradientType = 'linear';
-  let slidePadding = 60;
-
-  // Preview zoom
-  let previewZoom = 0.35;
+  let textAlign = $state('center');
+  let verticalAlign = $state('center');
+  let fontScale = $state(1);
+  let fontColor = $state('#ffffff');
+  let fontFamily = $state('');
+  let gradientTheme = $state('dark');  // 'light' | 'dark'
+  let gradientColorCount = $state(3);
+  let gradientColors = $state(['#667eea', '#764ba2', '#f093fb']);
+  let slidePadding = $state(60);
+  let previewZoom = $state([0.35]);
+  let continuousBackground = $state(false);
 
   // Corner watermarks
-  let corners = {
+  let corners = $state({
     topLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
     topRight: { enabled: false, type: 'text', text: '', image: null, size: 24 },
     bottomLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
     bottomRight: { enabled: false, type: 'text', text: '', image: null, size: 24 },
-  };
+  });
 
-  let slideElements = [];
+  // Export refs
+  let slideElements = $state([]);
 
-  $: currentDimension = DIMENSIONS[selectedDimension];
-  $: slides = parseAndSplitMarkdown(markdownText);
+  // Derived
+  let dimension = $derived(DIMENSIONS[selectedDimension]);
+  let slides = $derived(parseAndSplitMarkdown(markdownText));
+  let zoomValue = $derived(previewZoom[0]);
+  let scaledCorners = $derived(Object.fromEntries(
+    Object.entries(corners).map(([key, val]) => [
+      key,
+      { ...val, size: val.size * exportScale }
+    ])
+  ));
 
+  // Handlers
   async function handleExport() {
     if (slides.length === 0) return;
     isExporting = true;
     try {
       await exportSlidesToZip(
         slideElements,
-        currentDimension.width,
-        currentDimension.height,
+        dimension.width * exportScale,
+        dimension.height * exportScale,
         'slides'
       );
     } catch (err) {
@@ -97,671 +117,386 @@ Edit this text to create your own carousel.`;
     }
   }
 
-  function randomColor() {
-    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  function randomThemeColor(theme) {
+    const hue = Math.floor(Math.random() * 360);
+    if (theme === 'light') {
+      // Light: high lightness (70-90%), medium saturation (60-100%)
+      const sat = 60 + Math.floor(Math.random() * 40);
+      const light = 70 + Math.floor(Math.random() * 20);
+      return hslToHex(hue, sat, light);
+    } else {
+      // Dark: low-medium lightness (30-60%), high saturation (70-100%)
+      const sat = 70 + Math.floor(Math.random() * 30);
+      const light = 30 + Math.floor(Math.random() * 30);
+      return hslToHex(hue, sat, light);
+    }
   }
 
-  function randomizeColor1() { gradientColor1 = randomColor(); }
-  function randomizeColor2() { gradientColor2 = randomColor(); }
-  function randomizeDirection() {
-    const dirs = GRADIENT_DIRECTIONS.map(d => d.value);
-    gradientDirection = dirs[Math.floor(Math.random() * dirs.length)];
-  }
-  function randomizeType() { gradientType = Math.random() > 0.5 ? 'linear' : 'radial'; }
-  function randomizeAll() {
-    randomizeColor1();
-    randomizeColor2();
-    randomizeDirection();
-    randomizeType();
+  function hslToHex(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
   }
 
-  function toggleCorner(position) {
-    corners[position].enabled = !corners[position].enabled;
-    corners = corners;
+  function randomizeGradient() {
+    gradientColors = Array.from({ length: gradientColorCount }, () =>
+      randomThemeColor(gradientTheme)
+    );
+    fontColor = gradientTheme === 'light' ? '#000000' : '#ffffff';
   }
 
-  function handleImageUpload(position, event) {
+  function setTheme(theme) {
+    gradientTheme = theme;
+    randomizeGradient();
+  }
+
+  function setColorCount(count) {
+    gradientColorCount = count;
+    randomizeGradient();
+  }
+
+  function handleImageUpload(key, event) {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      corners[position].image = e.target.result;
-      corners[position].type = 'image';
-      corners = corners;
+      corners[key].image = e.target.result;
+      corners[key].type = 'image';
     };
     reader.readAsDataURL(file);
   }
-
-  function clearCornerImage(position) {
-    corners[position].image = null;
-    corners[position].type = 'text';
-    corners = corners;
-  }
-
-  function getCornerLabel(pos) {
-    return { topLeft: 'Top Left', topRight: 'Top Right', bottomLeft: 'Bottom Left', bottomRight: 'Bottom Right' }[pos];
-  }
-
-  function getCornerShort(pos) {
-    return { topLeft: 'TL', topRight: 'TR', bottomLeft: 'BL', bottomRight: 'BR' }[pos];
-  }
 </script>
 
-<div class="app">
-  <!-- Left Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h1>Carousel</h1>
-      <button class="btn-export" on:click={handleExport} disabled={isExporting || slides.length === 0}>
+<div class="flex h-screen bg-zinc-900 text-zinc-200 text-sm">
+  <!-- Sidebar -->
+  <aside class="w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0">
+    <header class="p-4 border-b border-zinc-200 dark:border-zinc-800">
+      <h1 class="text-lg font-bold mb-3 bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+        Carousel
+      </h1>
+      <Button class="w-full" onclick={handleExport} disabled={isExporting || slides.length === 0}>
         {isExporting ? 'Exporting...' : 'Download ZIP'}
-      </button>
-    </div>
+      </Button>
+    </header>
 
-    <div class="sidebar-content">
+    <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-5">
       <!-- Format -->
-      <section class="option-group">
-        <h3>Format</h3>
-        <select bind:value={selectedDimension}>
-          {#each Object.entries(DIMENSIONS) as [key, dim]}
-            <option value={key}>{dim.label}</option>
-          {/each}
-        </select>
+      <section class="space-y-2">
+        <Label class="text-xs font-semibold uppercase text-zinc-500 block">Format</Label>
+        <Select.Root type="single" bind:value={selectedDimension}>
+          <Select.Trigger class="w-full">
+            {DIMENSIONS[selectedDimension]?.label || 'Select format'}
+          </Select.Trigger>
+          <Select.Content>
+            {#each Object.entries(DIMENSIONS) as [key, d]}
+              <Select.Item value={key}>{d.label}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+        <Select.Root type="single" bind:value={exportScale}>
+          <Select.Trigger class="w-full">
+            {EXPORT_SCALES.find(s => s.value === exportScale)?.label} ({EXPORT_SCALES.find(s => s.value === exportScale)?.desc})
+          </Select.Trigger>
+          <Select.Content>
+            {#each EXPORT_SCALES as scale}
+              <Select.Item value={scale.value}>{scale.label} ({scale.desc})</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </section>
+
+      <Separator />
 
       <!-- Text -->
-      <section class="option-group">
-        <h3>Text</h3>
-        <div class="option-row">
-          <label>Align</label>
-          <div class="btn-group">
-            {#each ['left', 'center', 'right', 'justify'] as align}
-              <button class="btn-toggle" class:active={textAlign === align} on:click={() => textAlign = align}>
-                {align.charAt(0).toUpperCase()}
-              </button>
+      <section class="space-y-2">
+        <Label class="text-xs font-semibold uppercase text-zinc-500 block">Text</Label>
+
+        <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
+          <Label class="text-zinc-600 dark:text-zinc-400">Align</Label>
+          <div class="flex">
+            {#each ['left', 'center', 'right', 'justify'] as a}
+              <Button
+                variant={textAlign === a ? 'default' : 'outline'}
+                size="sm"
+                class="flex-1 rounded-none first:rounded-l-md last:rounded-r-md -ml-px first:ml-0 px-2"
+                onclick={() => textAlign = a}
+              >
+                {a[0].toUpperCase()}
+              </Button>
             {/each}
           </div>
-        </div>
-        <div class="option-row">
-          <label>Vertical</label>
-          <div class="btn-group">
-            {#each [['top', 'T'], ['center', 'C'], ['bottom', 'B']] as [val, lbl]}
-              <button class="btn-toggle" class:active={verticalAlign === val} on:click={() => verticalAlign = val}>
-                {lbl}
-              </button>
+
+          <Label class="text-zinc-600 dark:text-zinc-400">Vertical</Label>
+          <div class="flex">
+            {#each [['top', 'T'], ['center', 'C'], ['bottom', 'B']] as [v, l]}
+              <Button
+                variant={verticalAlign === v ? 'default' : 'outline'}
+                size="sm"
+                class="flex-1 rounded-none first:rounded-l-md last:rounded-r-md -ml-px first:ml-0 px-2"
+                onclick={() => verticalAlign = v}
+              >
+                {l}
+              </Button>
             {/each}
           </div>
-        </div>
-        <div class="option-row">
-          <label>Size</label>
-          <input type="number" min="50" max="200" step="5" value={Math.round(fontScale * 100)} on:input={(e) => fontScale = parseInt(e.target.value) / 100} class="num-input" />
-          <span class="unit">%</span>
-        </div>
-        <div class="option-row">
-          <label>Color</label>
-          <input type="color" bind:value={fontColor} class="color-input" />
-        </div>
-        <div class="option-row">
-          <label>Font</label>
-          <input type="text" bind:value={fontFamily} placeholder="Arial, Roboto..." class="text-input" />
-        </div>
-        <div class="option-row">
-          <label>Padding</label>
-          <input type="number" min="0" max="200" step="10" bind:value={slidePadding} class="num-input" />
-          <span class="unit">px</span>
+
+          <Label class="text-zinc-600 dark:text-zinc-400">Size</Label>
+          <div class="flex items-center gap-2">
+            <Slider
+              value={[fontScale * 100]}
+              onValueChange={(v) => fontScale = v[0] / 100}
+              min={50}
+              max={200}
+              step={5}
+              class="flex-1"
+            />
+            <span class="text-zinc-500 w-10 text-right">{Math.round(fontScale * 100)}%</span>
+          </div>
+
+          <Label class="text-zinc-600 dark:text-zinc-400">Color</Label>
+          <input type="color" bind:value={fontColor} class="w-8 h-8 rounded border border-zinc-300 dark:border-zinc-700 cursor-pointer" />
+
+          <Label class="text-zinc-600 dark:text-zinc-400">Font</Label>
+          <Input bind:value={fontFamily} placeholder="Arial, Roboto..." class="min-w-0" />
+
+          <Label class="text-zinc-600 dark:text-zinc-400">Padding</Label>
+          <div class="flex items-center gap-2">
+            <Slider
+              value={[slidePadding]}
+              onValueChange={(v) => slidePadding = v[0]}
+              min={0}
+              max={200}
+              step={10}
+              class="flex-1"
+            />
+            <span class="text-zinc-500 w-10 text-right">{slidePadding}px</span>
+          </div>
         </div>
       </section>
+
+      <Separator />
 
       <!-- Gradient -->
-      <section class="option-group">
-        <h3>Gradient</h3>
-        <div class="option-row">
-          <label>Color 1</label>
-          <input type="color" bind:value={gradientColor1} class="color-input" />
-          <button class="btn-mini" on:click={randomizeColor1}>?</button>
-        </div>
-        <div class="option-row">
-          <label>Color 2</label>
-          <input type="color" bind:value={gradientColor2} class="color-input" />
-          <button class="btn-mini" on:click={randomizeColor2}>?</button>
-        </div>
-        <div class="option-row">
-          <label>Direction</label>
-          <select bind:value={gradientDirection} class="select-small">
-            {#each GRADIENT_DIRECTIONS as dir}
-              <option value={dir.value}>{dir.label}</option>
+      <section class="space-y-2">
+        <Label class="text-xs font-semibold uppercase text-zinc-500 block">Gradient</Label>
+
+        <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
+          <Label class="text-zinc-600 dark:text-zinc-400">Theme</Label>
+          <div class="flex">
+            <Button
+              variant={gradientTheme === 'light' ? 'default' : 'outline'}
+              size="sm"
+              class="flex-1 rounded-r-none"
+              onclick={() => setTheme('light')}
+            >
+              Light
+            </Button>
+            <Button
+              variant={gradientTheme === 'dark' ? 'default' : 'outline'}
+              size="sm"
+              class="flex-1 rounded-l-none -ml-px"
+              onclick={() => setTheme('dark')}
+            >
+              Dark
+            </Button>
+          </div>
+
+          <Label class="text-zinc-600 dark:text-zinc-400">Colors</Label>
+          <div class="flex">
+            {#each [2, 3, 4, 5] as count}
+              <Button
+                variant={gradientColorCount === count ? 'default' : 'outline'}
+                size="sm"
+                class="flex-1 rounded-none first:rounded-l-md last:rounded-r-md -ml-px first:ml-0 px-2"
+                onclick={() => setColorCount(count)}
+              >
+                {count}
+              </Button>
             {/each}
-          </select>
-          <button class="btn-mini" on:click={randomizeDirection}>?</button>
+          </div>
+
+          {#each gradientColors as color, i}
+            <Label class="text-zinc-600 dark:text-zinc-400">{i + 1}</Label>
+            <input type="color" bind:value={gradientColors[i]} class="w-8 h-8 rounded border border-zinc-300 dark:border-zinc-700 cursor-pointer" />
+          {/each}
+
+          <Label class="text-zinc-600 dark:text-zinc-400">Seamless</Label>
+          <Switch bind:checked={continuousBackground} />
         </div>
-        <div class="option-row">
-          <label>Type</label>
-          <select bind:value={gradientType} class="select-small">
-            <option value="linear">Linear</option>
-            <option value="radial">Radial</option>
-          </select>
-          <button class="btn-mini" on:click={randomizeType}>?</button>
-        </div>
-        <button class="btn-random-all" on:click={randomizeAll}>Randomize All</button>
       </section>
 
+      <Separator />
+
       <!-- Corners -->
-      <section class="option-group">
-        <h3>Corners</h3>
-        <div class="corner-toggles">
-          {#each CORNER_POSITIONS as pos}
-            <button class="btn-corner" class:active={corners[pos].enabled} on:click={() => toggleCorner(pos)}>
-              {getCornerShort(pos)}
-            </button>
+      <section class="space-y-2">
+        <Label class="text-xs font-semibold uppercase text-zinc-500 block">Corners</Label>
+
+        <div class="flex">
+          {#each CORNERS as c}
+            <Button
+              variant={corners[c.key].enabled ? 'default' : 'outline'}
+              size="sm"
+              class="flex-1 rounded-none first:rounded-l-md last:rounded-r-md -ml-px first:ml-0 px-2"
+              onclick={() => corners[c.key].enabled = !corners[c.key].enabled}
+            >
+              {c.short}
+            </Button>
           {/each}
         </div>
 
-        {#each CORNER_POSITIONS as pos}
-          {#if corners[pos].enabled}
-            <div class="corner-config">
-              <div class="corner-header">{getCornerLabel(pos)}</div>
-              <div class="option-row">
-                <label>Type</label>
-                <div class="btn-group small">
-                  <button class="btn-toggle" class:active={corners[pos].type === 'text'} on:click={() => { corners[pos].type = 'text'; corners = corners; }}>Text</button>
-                  <button class="btn-toggle" class:active={corners[pos].type === 'image'} on:click={() => { corners[pos].type = 'image'; corners = corners; }}>Logo</button>
+        {#each CORNERS as c}
+          {#if corners[c.key].enabled}
+            <div class="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-3 space-y-2">
+              <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{c.label}</span>
+
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
+                <Label class="text-zinc-600 dark:text-zinc-400 text-xs">Type</Label>
+                <div class="flex">
+                  <Button
+                    variant={corners[c.key].type === 'text' ? 'default' : 'outline'}
+                    size="sm"
+                    class="flex-1 rounded-r-none text-xs h-7"
+                    onclick={() => corners[c.key].type = 'text'}
+                  >
+                    Text
+                  </Button>
+                  <Button
+                    variant={corners[c.key].type === 'image' ? 'default' : 'outline'}
+                    size="sm"
+                    class="flex-1 rounded-l-none -ml-px text-xs h-7"
+                    onclick={() => corners[c.key].type = 'image'}
+                  >
+                    Logo
+                  </Button>
+                </div>
+
+                <Label class="text-zinc-600 dark:text-zinc-400 text-xs">Size</Label>
+                <div class="flex items-center gap-2">
+                  <Slider
+                    value={[corners[c.key].size]}
+                    onValueChange={(v) => corners[c.key].size = v[0]}
+                    min={10}
+                    max={100}
+                    step={2}
+                    class="flex-1"
+                  />
+                  <span class="text-zinc-500 text-xs w-8 text-right">{corners[c.key].size}px</span>
                 </div>
               </div>
-              <div class="option-row">
-                <label>Size</label>
-                <input type="number" min="10" max="100" step="2" bind:value={corners[pos].size} class="num-input" />
-                <span class="unit">px</span>
-              </div>
-              {#if corners[pos].type === 'text'}
-                <input type="text" bind:value={corners[pos].text} placeholder="*my brand*" class="text-input full" />
+
+              {#if corners[c.key].type === 'text'}
+                <Input bind:value={corners[c.key].text} placeholder="*my brand*" class="w-full h-7 text-xs" />
+              {:else if corners[c.key].image}
+                <div class="flex items-center gap-2">
+                  <img src={corners[c.key].image} alt="" class="h-7" />
+                  <Button variant="destructive" size="sm" class="h-7 w-7 p-0" onclick={() => corners[c.key].image = null}>×</Button>
+                </div>
               {:else}
-                {#if corners[pos].image}
-                  <div class="image-row">
-                    <img src={corners[pos].image} alt="" class="thumb" />
-                    <button class="btn-clear" on:click={() => clearCornerImage(pos)}>x</button>
-                  </div>
-                {:else}
-                  <label class="upload-btn">
-                    <input type="file" accept=".svg,.png" on:change={(e) => handleImageUpload(pos, e)} />
-                    Upload Logo
-                  </label>
-                {/if}
+                <label class="block w-full">
+                  <input type="file" accept=".svg,.png" onchange={(e) => handleImageUpload(c.key, e)} class="hidden" />
+                  <Button variant="secondary" size="sm" class="w-full h-7 text-xs pointer-events-none">Upload Logo</Button>
+                </label>
               {/if}
             </div>
           {/if}
         {/each}
       </section>
 
-      <!-- Preview Zoom -->
-      <section class="option-group">
-        <h3>Preview Zoom</h3>
-        <div class="option-row">
-          <input type="range" min="0.15" max="0.6" step="0.01" bind:value={previewZoom} class="zoom-slider" />
-          <span class="zoom-value">{Math.round(previewZoom * 100)}%</span>
+      <Separator />
+
+      <!-- Zoom -->
+      <section class="space-y-2">
+        <Label class="text-xs font-semibold uppercase text-zinc-500 block">Preview</Label>
+        <div class="flex items-center gap-3">
+          <Slider bind:value={previewZoom} min={0.15} max={0.6} step={0.01} class="flex-1" />
+          <span class="text-zinc-500 w-10 text-right">{Math.round(zoomValue * 100)}%</span>
         </div>
       </section>
     </div>
   </aside>
 
-  <!-- Main Content -->
-  <main class="main-content">
-    <!-- Editor -->
-    <div class="editor-panel">
-      <textarea
-        class="markdown-editor"
-        bind:value={markdownText}
-        placeholder="# Slide 1
-
-Content...
-
----
-
-# Slide 2
-
-More content..."
-        spellcheck="false"
-      ></textarea>
-    </div>
-
-    <!-- Preview -->
-    <div class="preview-panel">
-      {#if slides.length === 0}
-        <div class="empty-state">Write markdown to see slides</div>
-      {:else}
-        <div class="slides-row">
-          {#each slides as html, i (i + '-' + fontScale + '-' + fontColor + '-' + slidePadding)}
-            {#if i > 0}
-              <div class="slide-divider"></div>
-            {/if}
-            <div
-              class="slide-wrapper"
-              style="width: {currentDimension.width * previewZoom}px; height: {currentDimension.height * previewZoom}px;"
-            >
-              <Slide
-                {html}
-                width={currentDimension.width}
-                height={currentDimension.height}
-                scale={previewZoom}
-                {textAlign}
-                {verticalAlign}
-                {fontScale}
-                {fontColor}
-                {fontFamily}
-                {gradientColor1}
-                {gradientColor2}
-                {gradientDirection}
-                {gradientType}
-                {corners}
-                padding={slidePadding}
-              />
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </div>
+  <!-- Preview -->
+  <main class="flex-1 overflow-auto p-5 flex items-start justify-start">
+    {#if slides.length === 0}
+      <p class="text-zinc-500">Write markdown to see slides</p>
+    {:else}
+      <div class="flex items-start">
+        {#each slides as html, i}
+          {#if i > 0 && !continuousBackground}
+            <div class="w-0 self-stretch border-l-2 border-dashed border-white/30"></div>
+          {/if}
+          <div class="shrink-0" style="width:{dimension.width * zoomValue}px;height:{dimension.height * zoomValue}px;">
+            <Slide
+              {html}
+              width={dimension.width}
+              height={dimension.height}
+              scale={zoomValue}
+              {textAlign}
+              {verticalAlign}
+              {fontScale}
+              {fontColor}
+              {fontFamily}
+              {gradientColors}
+              {corners}
+              padding={slidePadding}
+              {continuousBackground}
+              slideIndex={i}
+              totalSlides={slides.length}
+            />
+          </div>
+        {/each}
+      </div>
+    {/if}
   </main>
+
+  <!-- Editor -->
+  <aside class="shrink-0 bg-zinc-950 border-l border-zinc-800 flex relative transition-all duration-200" class:w-[560px]={!editorCollapsed} class:w-8={editorCollapsed}>
+    <Button
+      variant="default"
+      size="icon"
+      class="absolute -left-4 top-1/2 -translate-y-1/2 rounded-full h-8 w-8 z-10"
+      onclick={() => editorCollapsed = !editorCollapsed}
+    >
+      {editorCollapsed ? '<' : '>'}
+    </Button>
+    {#if !editorCollapsed}
+      <textarea
+        bind:value={markdownText}
+        placeholder="# Slide 1&#10;&#10;Content...&#10;&#10;---&#10;&#10;# Slide 2"
+        spellcheck="false"
+        class="flex-1 w-full p-4 bg-transparent text-zinc-300 border-none font-mono text-xs leading-relaxed resize-none focus:outline-none placeholder:text-zinc-600"
+      ></textarea>
+    {/if}
+  </aside>
 </div>
 
 <!-- Hidden export slides -->
-<div class="export-container" aria-hidden="true">
+<div class="absolute -left-[9999px] -top-[9999px]" aria-hidden="true">
   {#each slides as html, i}
     <div bind:this={slideElements[i]}>
       <Slide
         {html}
-        width={currentDimension.width}
-        height={currentDimension.height}
+        width={dimension.width * exportScale}
+        height={dimension.height * exportScale}
         scale={1}
         {textAlign}
         {verticalAlign}
-        {fontScale}
+        fontScale={fontScale * exportScale}
         {fontColor}
         {fontFamily}
-        {gradientColor1}
-        {gradientColor2}
-        {gradientDirection}
-        {gradientType}
-        {corners}
-        padding={slidePadding}
+        {gradientColors}
+        corners={scaledCorners}
+        padding={slidePadding * exportScale}
+        {continuousBackground}
+        slideIndex={i}
+        totalSlides={slides.length}
       />
     </div>
   {/each}
 </div>
-
-<style>
-  .app {
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
-    background: #1a1a2e;
-  }
-
-  /* Sidebar */
-  .sidebar {
-    width: 260px;
-    background: #fff;
-    border-right: 1px solid #e0e0e0;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-  }
-
-  .sidebar-header {
-    padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  .sidebar-header h1 {
-    font-size: 1.2rem;
-    margin: 0 0 12px 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .btn-export {
-    width: 100%;
-    padding: 10px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-  }
-
-  .btn-export:hover:not(:disabled) {
-    background: #5a6fd6;
-  }
-
-  .btn-export:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .sidebar-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-  }
-
-  .option-group {
-    margin-bottom: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #eee;
-  }
-
-  .option-group:last-child {
-    border-bottom: none;
-  }
-
-  .option-group h3 {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #888;
-    margin: 0 0 10px 0;
-  }
-
-  .option-group select {
-    width: 100%;
-    padding: 6px 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 12px;
-  }
-
-  .option-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .option-row label {
-    font-size: 11px;
-    color: #666;
-    min-width: 50px;
-  }
-
-  .btn-group {
-    display: flex;
-  }
-
-  .btn-group.small .btn-toggle {
-    padding: 3px 8px;
-    font-size: 10px;
-  }
-
-  .btn-toggle {
-    padding: 4px 8px;
-    border: 1px solid #ddd;
-    background: #fff;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 600;
-    color: #666;
-  }
-
-  .btn-toggle:first-child {
-    border-radius: 4px 0 0 4px;
-  }
-
-  .btn-toggle:last-child {
-    border-radius: 0 4px 4px 0;
-  }
-
-  .btn-toggle:not(:first-child) {
-    border-left: none;
-  }
-
-  .btn-toggle.active {
-    background: #667eea;
-    border-color: #667eea;
-    color: white;
-  }
-
-  .num-input {
-    width: 50px;
-    padding: 4px 6px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 11px;
-    text-align: center;
-  }
-
-  .text-input {
-    flex: 1;
-    padding: 4px 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 11px;
-  }
-
-  .text-input.full {
-    width: 100%;
-    margin-top: 6px;
-  }
-
-  .color-input {
-    width: 32px;
-    height: 24px;
-    padding: 0;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .select-small {
-    flex: 1;
-    padding: 4px 6px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 11px;
-  }
-
-  .unit {
-    font-size: 10px;
-    color: #888;
-  }
-
-  .btn-mini {
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #fff;
-    cursor: pointer;
-    font-size: 11px;
-    color: #667eea;
-  }
-
-  .btn-mini:hover {
-    background: #667eea;
-    color: white;
-    border-color: #667eea;
-  }
-
-  .btn-random-all {
-    width: 100%;
-    padding: 6px;
-    border: 1px solid #667eea;
-    border-radius: 4px;
-    background: #fff;
-    color: #667eea;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 8px;
-  }
-
-  .btn-random-all:hover {
-    background: #667eea;
-    color: white;
-  }
-
-  .corner-toggles {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 10px;
-  }
-
-  .btn-corner {
-    flex: 1;
-    padding: 6px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #fff;
-    cursor: pointer;
-    font-size: 10px;
-    font-weight: 600;
-    color: #666;
-  }
-
-  .btn-corner.active {
-    background: #667eea;
-    border-color: #667eea;
-    color: white;
-  }
-
-  .corner-config {
-    background: #f8f8f8;
-    border-radius: 6px;
-    padding: 10px;
-    margin-bottom: 8px;
-  }
-
-  .corner-header {
-    font-size: 11px;
-    font-weight: 600;
-    color: #667eea;
-    margin-bottom: 8px;
-  }
-
-  .image-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 6px;
-  }
-
-  .thumb {
-    height: 28px;
-    width: auto;
-  }
-
-  .btn-clear {
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    border: none;
-    background: #ff4444;
-    color: white;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 11px;
-  }
-
-  .upload-btn {
-    display: block;
-    width: 100%;
-    padding: 6px;
-    background: #667eea;
-    color: white;
-    border-radius: 4px;
-    font-size: 11px;
-    text-align: center;
-    cursor: pointer;
-    margin-top: 6px;
-  }
-
-  .upload-btn input {
-    display: none;
-  }
-
-  .zoom-slider {
-    flex: 1;
-    cursor: pointer;
-  }
-
-  .zoom-value {
-    font-size: 11px;
-    color: #666;
-    min-width: 35px;
-    text-align: right;
-  }
-
-  /* Main Content */
-  .main-content {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-  }
-
-  .editor-panel {
-    width: 280px;
-    min-width: 200px;
-    background: #252538;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .markdown-editor {
-    flex: 1;
-    width: 100%;
-    padding: 16px;
-    border: none;
-    font-family: 'Fira Code', 'Consolas', monospace;
-    font-size: 12px;
-    line-height: 1.6;
-    resize: none;
-    background: transparent;
-    color: #e0e0e0;
-  }
-
-  .markdown-editor:focus {
-    outline: none;
-  }
-
-  .markdown-editor::placeholder {
-    color: #666;
-  }
-
-  .preview-panel {
-    flex: 1;
-    overflow: auto;
-    padding: 20px;
-    display: flex;
-    align-items: flex-start;
-  }
-
-  .empty-state {
-    color: #666;
-    font-size: 14px;
-  }
-
-  .slides-row {
-    display: flex;
-    align-items: flex-start;
-  }
-
-  .slide-wrapper {
-    flex-shrink: 0;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .slide-divider {
-    width: 0;
-    align-self: stretch;
-    border-left: 2px dotted rgba(255, 255, 255, 0.3);
-    margin: 0;
-  }
-
-  .export-container {
-    position: absolute;
-    left: -9999px;
-    top: -9999px;
-  }
-</style>
