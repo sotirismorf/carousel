@@ -63,6 +63,15 @@
             />
             <span class="text-muted-foreground text-xs w-8 text-right">{corners[c.key].size}px</span>
           </div>
+
+          {#if corners[c.key].type === 'text'}
+            <Label class="text-muted-foreground text-xs">Font</Label>
+            <Input
+              bind:value={corners[c.key].fontFamily}
+              placeholder="Arial, Roboto..."
+              class="min-w-0 h-7 text-xs"
+            />
+          {/if}
         </div>
 
         {#if corners[c.key].type === 'text'}

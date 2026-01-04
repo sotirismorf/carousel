@@ -23,10 +23,12 @@
 		e.stopPropagation();
 
 		let delta = 0;
-		if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-			delta = e.key === 'ArrowRight' ? step : -step;
+		const useStep = e.shiftKey ? stepFine : step;
+		// Right/Up = increase, Left/Down = decrease
+		if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+			delta = useStep;
 		} else {
-			delta = e.key === 'ArrowUp' ? stepFine : -stepFine;
+			delta = -useStep;
 		}
 
 		const newValue = [Math.min(max, Math.max(min, value[0] + delta))];

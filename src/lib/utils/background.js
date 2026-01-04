@@ -18,19 +18,34 @@ export function getBackgroundColor(bgType, bgSolidColor, gradientColors) {
  * @param {'solid' | 'gradient' | 'image'} bgType
  * @param {string[]} gradientColors
  * @param {string | null} bgImage
+ * @param {string[]} [gradientPositions] - Optional custom positions
  * @returns {string}
  */
-export function getBackgroundImage(bgType, gradientColors, bgImage) {
+export function getBackgroundImage(bgType, gradientColors, bgImage, gradientPositions) {
   if (bgType === 'gradient') {
+    const positions = gradientPositions || MESH_POSITIONS;
     return gradientColors
       .map((color, i) => {
-        const pos = MESH_POSITIONS[i % MESH_POSITIONS.length];
+        const pos = positions[i % positions.length];
         return `radial-gradient(at ${pos}, ${color} 0px, transparent 50%)`;
       })
       .join(',');
   }
   if (bgType === 'image' && bgImage) return `url(${bgImage})`;
   return 'none';
+}
+
+/**
+ * Generate random gradient positions
+ * @param {number} count - Number of positions to generate
+ * @returns {string[]}
+ */
+export function generateRandomPositions(count) {
+  return Array.from({ length: count }, () => {
+    const x = Math.floor(Math.random() * 100);
+    const y = Math.floor(Math.random() * 100);
+    return `${x}% ${y}%`;
+  });
 }
 
 /**

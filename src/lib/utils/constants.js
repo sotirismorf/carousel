@@ -54,6 +54,7 @@ export const DEFAULT_CORNER = {
   text: '',
   image: null,
   size: 24,
+  fontFamily: '',
 };
 
 // Predefined positions for gradient mesh blobs

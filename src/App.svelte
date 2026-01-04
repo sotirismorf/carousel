@@ -3,24 +3,34 @@
   import { parseAndSplitMarkdown } from './lib/utils/markdown.js';
   import { exportSlidesToZip } from './lib/utils/export.js';
   import { generateGradientColors } from './lib/utils/color.js';
-  import { DIMENSIONS, CORNERS, EXPORT_SCALES, DEFAULT_MARKDOWN, DEFAULT_CORNER } from './lib/utils/constants.js';
+import { generateRandomPositions } from './lib/utils/background.js';
+  import { DIMENSIONS, CORNERS, EXPORT_SCALES, DEFAULT_CORNER } from './lib/utils/constants.js';
+  import { createDocumentsStore } from './lib/stores/documents.svelte.js';
 
   import { Button } from '$lib/components/ui/button';
   import { Slider } from '$lib/components/ui/slider';
   import { Label } from '$lib/components/ui/label';
   import { Separator } from '$lib/components/ui/separator';
+  import { Input } from '$lib/components/ui/input';
 
   import FormatControls from './lib/components/FormatControls.svelte';
   import TextControls from './lib/components/TextControls.svelte';
   import BackgroundControls from './lib/components/BackgroundControls.svelte';
   import CornerControls from './lib/components/CornerControls.svelte';
 
+  // Documents store for persistence
+  const docs = createDocumentsStore();
+
   // State - UI
   let selectedDimension = $state('square');
   let exportScale = $state(2);
   let isExporting = $state(false);
   let editorCollapsed = $state(false);
-  let markdownText = $state(DEFAULT_MARKDOWN);
+  let editingTabId = $state(null);
+  let editingTabName = $state('');
+
+  // Derived markdown text from active document
+  const markdownText = $derived(docs.getActiveDocument()?.content || '');
 
   // State - Text styles
   let textAlign = $state('center');
@@ -31,6 +41,9 @@
   let slidePadding = $state(60);
   let previewZoom = $state([0.35]);
   let continuousBackground = $state(true);
+  let lineHeight = $state(1.5);
+  let hyphenate = $state(false);
+  let textLang = $state('en');
 
   // State - Background
   let bgType = $state('gradient');
@@ -38,6 +51,7 @@
   let gradientTheme = $state('dark');
   let gradientColorCount = $state(3);
   let gradientColors = $state(['#667eea', '#764ba2', '#f093fb']);
+  let gradientPositions = $state(['40% 20%', '80% 0%', '0% 50%']);
   let bgImage = $state(null);
   let bgImageFit = $state('cover');
 
@@ -83,6 +97,7 @@
 
   function randomizeGradient() {
     gradientColors = generateGradientColors(gradientColorCount, gradientTheme);
+    gradientPositions = generateRandomPositions(gradientColorCount);
     fontColor = gradientTheme === 'light' ? '#000000' : '#ffffff';
   }
 
@@ -119,9 +134,9 @@
   }
 </script>
 
-<div class="dark flex h-screen bg-background text-foreground text-sm">
+<div class="dark flex h-screen max-h-screen overflow-hidden bg-background text-foreground text-sm">
   <!-- Sidebar -->
-  <aside class="w-64 bg-card border-r border-border flex flex-col shrink-0">
+  <aside class="w-64 min-w-64 bg-card border-r border-border flex flex-col shrink-0">
     <header class="p-4 border-b border-border">
       <h1 class="text-lg font-bold mb-3 bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
         Carousel
@@ -143,6 +158,9 @@
         bind:fontColor
         bind:fontFamily
         bind:slidePadding
+        bind:lineHeight
+        bind:hyphenate
+        bind:textLang
       />
 
       <Separator />
@@ -178,13 +196,13 @@
   </aside>
 
   <!-- Preview -->
-  <main class="flex-1 overflow-auto p-5 flex items-start justify-start">
+  <main class="flex-1 min-w-0 grid place-items-center overflow-auto p-5">
     {#if slides.length === 0}
       <p class="text-muted-foreground">Write markdown to see slides</p>
     {:else}
-      <div class="flex items-start">
+      <div class="flex items-start w-max">
         {#each slides as html, i}
-          <div class="shrink-0 relative" style="width:{dimension.width * zoomValue}px;height:{dimension.height * zoomValue}px;">
+          <div class="shrink-0 relative overflow-hidden" style="width:{dimension.width * zoomValue}px;height:{dimension.height * zoomValue}px;">
             {#if i > 0}
               <div class="absolute left-0 top-0 bottom-0 w-0 border-l-2 border-dashed border-white/30 -translate-x-[1px]"></div>
             {/if}
@@ -201,6 +219,7 @@
               {bgType}
               {bgSolidColor}
               {gradientColors}
+              {gradientPositions}
               {bgImage}
               {bgImageFit}
               {corners}
@@ -208,6 +227,9 @@
               {continuousBackground}
               slideIndex={i}
               totalSlides={slides.length}
+              {lineHeight}
+              {hyphenate}
+              {textLang}
             />
           </div>
         {/each}
@@ -216,24 +238,106 @@
   </main>
 
   <!-- Editor -->
-  <aside class="shrink-0 bg-background border-l border-border flex relative transition-all duration-200" class:w-[560px]={!editorCollapsed} class:w-8={editorCollapsed}>
-    <Button
-      variant="secondary"
-      size="icon"
-      class="absolute -left-4 top-1/2 -translate-y-1/2 rounded-full h-8 w-8 z-10"
-      onclick={() => editorCollapsed = !editorCollapsed}
-    >
-      {editorCollapsed ? '<' : '>'}
-    </Button>
+  <aside class="shrink-0 h-full max-h-full bg-card border-l border-border flex flex-col transition-all duration-200 overflow-hidden" class:w-[560px]={!editorCollapsed} class:w-0={editorCollapsed}>
     {#if !editorCollapsed}
+      <!-- Header with tabs and controls -->
+      <div class="flex items-center border-b border-border bg-muted/30 shrink-0 min-h-fit">
+        <div class="flex-1 flex items-center overflow-x-auto">
+          {#each docs.documents as doc (doc.id)}
+            <div
+              class="group relative flex items-center gap-1 px-3 py-2 text-xs border-r border-border hover:bg-muted/50 transition-colors shrink-0 cursor-pointer"
+              class:bg-card={doc.id === docs.activeId}
+              class:text-foreground={doc.id === docs.activeId}
+              class:text-muted-foreground={doc.id !== docs.activeId}
+              role="tab"
+              tabindex="0"
+              onclick={() => docs.setActiveId(doc.id)}
+              ondblclick={() => {
+                editingTabId = doc.id;
+                editingTabName = doc.name;
+              }}
+              onkeydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') docs.setActiveId(doc.id);
+              }}
+            >
+              {#if editingTabId === doc.id}
+                <input
+                  type="text"
+                  bind:value={editingTabName}
+                  class="w-20 bg-transparent border-none outline-none text-xs"
+                  onblur={() => {
+                    docs.renameDocument(doc.id, editingTabName);
+                    editingTabId = null;
+                  }}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter') {
+                      docs.renameDocument(doc.id, editingTabName);
+                      editingTabId = null;
+                    }
+                    if (e.key === 'Escape') {
+                      editingTabId = null;
+                    }
+                  }}
+                  onclick={(e) => e.stopPropagation()}
+                />
+              {:else}
+                <span class="max-w-24 truncate">{doc.name}</span>
+              {/if}
+              {#if docs.documents.length > 1}
+                <button
+                  class="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity ml-1"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    docs.removeDocument(doc.id);
+                  }}
+                >
+                  ×
+                </button>
+              {/if}
+            </div>
+          {/each}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="h-8 w-8 p-0 shrink-0"
+          onclick={() => docs.addDocument()}
+          title="New document"
+        >
+          +
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="h-8 w-8 p-0 shrink-0"
+          onclick={() => editorCollapsed = true}
+          title="Hide editor"
+        >
+          ⟩
+        </Button>
+      </div>
+      <!-- Editor textarea -->
       <textarea
-        bind:value={markdownText}
+        value={markdownText}
+        oninput={(e) => docs.setActiveContent(e.target.value)}
         placeholder="# Slide 1&#10;&#10;Content...&#10;&#10;---&#10;&#10;# Slide 2"
         spellcheck="false"
-        class="flex-1 w-full p-4 bg-transparent text-foreground border-none font-mono text-xs leading-relaxed resize-none focus:outline-none placeholder:text-muted-foreground"
+        class="flex-1 min-h-0 w-full p-4 bg-transparent text-foreground border-none font-mono text-xs leading-relaxed resize-none focus:outline-none placeholder:text-muted-foreground overflow-y-auto"
       ></textarea>
     {/if}
   </aside>
+
+  <!-- Show editor button when collapsed -->
+  {#if editorCollapsed}
+    <Button
+      variant="secondary"
+      size="sm"
+      class="fixed right-4 top-1/2 -translate-y-1/2 z-20"
+      onclick={() => editorCollapsed = false}
+    >
+      ⟨ Editor
+    </Button>
+  {/if}
 </div>
 
 <!-- Hidden export slides -->
@@ -253,6 +357,7 @@
         {bgType}
         {bgSolidColor}
         {gradientColors}
+        {gradientPositions}
         {bgImage}
         {bgImageFit}
         corners={scaledCorners}
@@ -260,6 +365,9 @@
         {continuousBackground}
         slideIndex={i}
         totalSlides={slides.length}
+        {lineHeight}
+        {hyphenate}
+        {textLang}
       />
     </div>
   {/each}
