@@ -7,8 +7,32 @@
 		value = $bindable(),
 		orientation = "horizontal",
 		class: className,
+		step = 1,
+		stepFine = 1,
+		min = 0,
+		max = 100,
+		onValueChange,
 		...restProps
 	} = $props();
+
+	function handleKeydown(e) {
+		if (!value || value.length === 0) return;
+		if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		let delta = 0;
+		if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+			delta = e.key === 'ArrowRight' ? step : -step;
+		} else {
+			delta = e.key === 'ArrowUp' ? stepFine : -stepFine;
+		}
+
+		const newValue = [Math.min(max, Math.max(min, value[0] + delta))];
+		value = newValue;
+		onValueChange?.(newValue);
+	}
 </script>
 
 <!--
@@ -20,6 +44,10 @@ get along, so we shut typescript up by casting `value` to `never`.
 	bind:value={value}
 	data-slot="slider"
 	{orientation}
+	{min}
+	{max}
+	{step}
+	{onValueChange}
 	class={cn(
 		"relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col",
 		className
@@ -45,6 +73,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 			<SliderPrimitive.Thumb
 				data-slot="slider-thumb"
 				index={thumb}
+				onkeydown={handleKeydown}
 				class="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 			/>
 		{/each}

@@ -1,50 +1,66 @@
 <script>
   import { marked } from 'marked';
+  import {
+    getBackgroundColor,
+    getBackgroundImage,
+    getBackgroundSize,
+    getBackgroundPosition,
+    getBackgroundRepeat,
+  } from './utils/background.js';
 
-  export let html = '';
-  export let width = 1080;
-  export let height = 1080;
-  export let scale = 0.3;
-  export let textAlign = 'center';
-  export let verticalAlign = 'center';
-  export let fontScale = 1;
-  export let fontColor = '#ffffff';
-  export let fontFamily = '';
-  export let gradientColors = ['#667eea', '#764ba2', '#f093fb'];
-  export let padding = 60;
-  export let corners = {
-    topLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
-    topRight: { enabled: false, type: 'text', text: '', image: null, size: 24 },
-    bottomLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
-    bottomRight: { enabled: false, type: 'text', text: '', image: null, size: 24 },
-  };
-  export let continuousBackground = false;
-  export let slideIndex = 0;
-  export let totalSlides = 1;
+  let {
+    html = '',
+    width = 1080,
+    height = 1080,
+    scale = 0.3,
+    textAlign = 'center',
+    verticalAlign = 'center',
+    fontScale = 1,
+    fontColor = '#ffffff',
+    fontFamily = '',
+    bgType = 'gradient',
+    bgSolidColor = '#667eea',
+    gradientColors = ['#667eea', '#764ba2', '#f093fb'],
+    bgImage = null,
+    bgImageFit = 'cover',
+    padding = 60,
+    corners = {
+      topLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
+      topRight: { enabled: false, type: 'text', text: '', image: null, size: 24 },
+      bottomLeft: { enabled: false, type: 'text', text: '', image: null, size: 24 },
+      bottomRight: { enabled: false, type: 'text', text: '', image: null, size: 24 },
+    },
+    continuousBackground = false,
+    slideIndex = 0,
+    totalSlides = 1,
+  } = $props();
 
-  $: verticalJustify = { top: 'flex-start', center: 'center', bottom: 'flex-end' }[verticalAlign] || 'center';
+  // Derived values using Svelte 5 runes
+  const verticalJustify = $derived(
+    { top: 'flex-start', center: 'center', bottom: 'flex-end' }[verticalAlign] || 'center'
+  );
 
-  // Predefined positions for gradient mesh blobs
-  const MESH_POSITIONS = [
-    '40% 20%', '80% 0%', '0% 50%',
-    '80% 50%', '0% 100%', '80% 100%', '0% 0%'
-  ];
+  const backgroundColor = $derived(getBackgroundColor(bgType, bgSolidColor, gradientColors));
 
-  $: backgroundColor = gradientColors[0] || '#667eea';
-  $: backgroundImage = gradientColors.map((color, i) => {
-    const pos = MESH_POSITIONS[i % MESH_POSITIONS.length];
-    return `radial-gradient(at ${pos}, ${color} 0px, transparent 50%)`;
-  }).join(',');
+  const backgroundImageValue = $derived(getBackgroundImage(bgType, gradientColors, bgImage));
 
-  // For continuous background, we stretch the gradient across all slides
-  $: backgroundSize = continuousBackground ? `${totalSlides * 100}% 100%` : '100% 100%';
-  $: backgroundPosition = continuousBackground ? `${(slideIndex / (totalSlides - 1 || 1)) * 100}% 0` : '0 0';
+  const backgroundSize = $derived(
+    getBackgroundSize(bgType, continuousBackground, bgImageFit, totalSlides)
+  );
 
-  $: baseFontSize = 36 * fontScale;
+  const backgroundPosition = $derived(
+    getBackgroundPosition(bgType, continuousBackground, slideIndex, width, totalSlides)
+  );
 
-  $: font = fontFamily
-    ? `${fontFamily}, 'Segoe UI', system-ui, sans-serif`
-    : `'Segoe UI', system-ui, sans-serif`;
+  const backgroundRepeat = $derived(
+    getBackgroundRepeat(bgType, continuousBackground, bgImageFit)
+  );
+
+  const baseFontSize = $derived(36 * fontScale);
+
+  const font = $derived(
+    fontFamily ? `${fontFamily}, 'Segoe UI', system-ui, sans-serif` : `'Segoe UI', system-ui, sans-serif`
+  );
 
   function parseInline(text) {
     return text ? marked.parseInline(text) : '';
@@ -57,9 +73,10 @@
   style:height="{height}px"
   style:transform="scale({scale})"
   style:background-color={backgroundColor}
-  style:background-image={backgroundImage}
+  style:background-image={backgroundImageValue}
   style:background-size={backgroundSize}
   style:background-position={backgroundPosition}
+  style:background-repeat={backgroundRepeat}
   style:align-items={verticalJustify}
   style:padding="{padding}px"
 >
