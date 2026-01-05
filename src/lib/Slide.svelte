@@ -247,7 +247,7 @@
   .slide-content :global(p) {
     font-size: 1em;
     line-height: var(--line-height, 1.5);
-    margin: 0 0 0.5em;
+    margin: 0 0 1em;
   }
 
   .slide-content :global(ul) {
