@@ -253,18 +253,18 @@
   .slide-content :global(ul) {
     font-size: 0.9em;
     margin: 0.5emi 0;
-    padding-left: 1em;
+    padding-left: 1.5em;
     max-width: 90%;
-    list-style-position: inside;
+    list-style-position: outside;
     list-style-type: disc;
   }
 
   .slide-content :global(ol) {
     font-size: 0.9em;
     margin: 0.5emi 0;
-    padding-left: 1em;
+    padding-left: 1.5em;
     max-width: 90%;
-    list-style-position: inside;
+    list-style-position: outside;
     list-style-type: decimal;
   }
 
