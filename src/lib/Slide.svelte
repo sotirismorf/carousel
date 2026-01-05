@@ -250,12 +250,22 @@
     margin: 0 0 0.5em;
   }
 
-  .slide-content :global(ul),
+  .slide-content :global(ul) {
+    font-size: 0.9em;
+    margin: 0.5emi 0;
+    padding-left: 1em;
+    max-width: 90%;
+    list-style-position: inside;
+    list-style-type: disc;
+  }
+
   .slide-content :global(ol) {
     font-size: 0.9em;
-    margin: 0.5em auto;
-    padding-left: 1.2em;
+    margin: 0.5emi 0;
+    padding-left: 1em;
     max-width: 90%;
+    list-style-position: inside;
+    list-style-type: decimal;
   }
 
   .slide-content :global(li) {
