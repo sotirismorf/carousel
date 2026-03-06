@@ -27,6 +27,18 @@
   let editingTabId = $state(null);
   let editingTabName = $state('');
 
+  // Mobile state
+  let mobilePanel = $state('preview'); // 'preview' | 'edit' | 'settings'
+  let isMobile = $state(
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  );
+  $effect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e) => { isMobile = e.matches; };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  });
+
   // Export refs
   let slideElements = $state([]);
 
@@ -104,10 +116,26 @@
   }
 </script>
 
-<div class="dark flex h-screen max-h-screen overflow-hidden bg-background text-foreground text-sm">
-  <!-- Sidebar -->
-  <aside class="w-64 min-w-64 bg-card border-r border-border flex flex-col shrink-0">
-    <header class="p-4 border-b border-border">
+<div class="dark flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background text-foreground text-sm">
+
+  <!-- Mobile header -->
+  <header class="flex md:hidden items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0">
+    <h1 class="text-base font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+      Carousel
+    </h1>
+    <Button onclick={handleExport} disabled={isExporting || slides.length === 0} size="sm">
+      {isExporting ? 'Exporting…' : 'Export'}
+    </Button>
+  </header>
+
+  <!-- Sidebar (Settings panel) -->
+  <aside
+    class="bg-card border-border flex flex-col shrink-0 overflow-hidden
+           w-full flex-1 md:flex-none md:w-64 md:min-w-64 md:border-r"
+    class:hidden={isMobile && mobilePanel !== 'settings'}
+  >
+    <!-- Desktop-only header -->
+    <header class="hidden md:block p-4 border-b border-border">
       <h1 class="text-lg font-bold mb-3 bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
         Carousel
       </h1>
@@ -155,7 +183,8 @@
 
       <Separator />
 
-      <section class="space-y-2">
+      <!-- Zoom slider: desktop only -->
+      <section class="hidden md:block space-y-2">
         <Label class="text-xs font-semibold uppercase text-muted-foreground block">Preview</Label>
         <div class="flex items-center gap-3">
           <Slider bind:value={settings.previewZoom} min={0.15} max={0.6} step={0.05} stepFine={0.01} class="flex-1" />
@@ -165,51 +194,73 @@
     </div>
   </aside>
 
-  <!-- Preview -->
-  <main class="flex-1 min-w-0 grid place-items-center overflow-auto p-5">
-    {#if slides.length === 0}
-      <p class="text-muted-foreground">Write markdown to see slides</p>
-    {:else}
-      <div class="flex items-start w-max">
-        {#each slides as html, i}
-          <div class="shrink-0 relative overflow-hidden" style="width:{dimension.width * zoomValue}px;height:{dimension.height * zoomValue}px;">
-            {#if i > 0}
-              <div class="absolute left-0 top-0 bottom-0 w-0 border-l-2 border-dashed border-white/30 -translate-x-[1px]"></div>
-            {/if}
-            <Slide
-              {html}
-              width={dimension.width}
-              height={dimension.height}
-              scale={zoomValue}
-              textAlign={settings.textAlign}
-              verticalAlign={settings.verticalAlign}
-              fontScale={settings.fontScale}
-              fontColor={settings.fontColor}
-              fontFamily={settings.fontFamily}
-              bgType={settings.bgType}
-              bgSolidColor={settings.bgSolidColor}
-              gradientColors={settings.gradientColors}
-              gradientPositions={settings.gradientPositions}
-              bgImage={settings.bgImage}
-              bgImageFit={settings.bgImageFit}
-              corners={settings.corners}
-              padding={settings.slidePadding}
-              continuousBackground={settings.continuousBackground}
-              slideIndex={i}
-              totalSlides={slides.length}
-              lineHeight={settings.lineHeight}
-              hyphenate={settings.hyphenate}
-              textLang={settings.textLang}
-            />
-          </div>
-        {/each}
+  <!-- Preview wrapper -->
+  <div
+    class="flex flex-col flex-1 min-w-0 min-h-0"
+    class:hidden={isMobile && mobilePanel !== 'preview'}
+  >
+    <main class="flex-1 min-w-0 grid place-items-center overflow-auto p-2 md:p-5">
+      {#if slides.length === 0}
+        <p class="text-muted-foreground">Write markdown to see slides</p>
+      {:else}
+        <div class="flex items-start w-max">
+          {#each slides as html, i}
+            <div class="shrink-0 relative overflow-hidden" style="width:{dimension.width * zoomValue}px;height:{dimension.height * zoomValue}px;">
+              {#if i > 0}
+                <div class="absolute left-0 top-0 bottom-0 w-0 border-l-2 border-dashed border-white/30 -translate-x-[1px]"></div>
+              {/if}
+              <Slide
+                {html}
+                width={dimension.width}
+                height={dimension.height}
+                scale={zoomValue}
+                textAlign={settings.textAlign}
+                verticalAlign={settings.verticalAlign}
+                fontScale={settings.fontScale}
+                fontColor={settings.fontColor}
+                fontFamily={settings.fontFamily}
+                bgType={settings.bgType}
+                bgSolidColor={settings.bgSolidColor}
+                gradientColors={settings.gradientColors}
+                gradientPositions={settings.gradientPositions}
+                bgImage={settings.bgImage}
+                bgImageFit={settings.bgImageFit}
+                corners={settings.corners}
+                padding={settings.slidePadding}
+                continuousBackground={settings.continuousBackground}
+                slideIndex={i}
+                totalSlides={slides.length}
+                lineHeight={settings.lineHeight}
+                hyphenate={settings.hyphenate}
+                textLang={settings.textLang}
+              />
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </main>
+
+    <!-- Zoom bar: mobile only, outside scroll container -->
+    {#if isMobile}
+      <div class="flex items-center gap-2 px-4 py-2 border-t border-border bg-card shrink-0">
+        <span class="text-muted-foreground text-xs shrink-0">Zoom</span>
+        <Slider bind:value={settings.previewZoom} min={0.15} max={0.6} step={0.05} stepFine={0.01} class="flex-1" />
+        <span class="text-muted-foreground text-xs w-8 text-right shrink-0">{Math.round(zoomValue * 100)}%</span>
       </div>
     {/if}
-  </main>
+  </div>
 
   <!-- Editor -->
-  <aside class="shrink-0 h-full max-h-full bg-card border-l border-border flex flex-col transition-all duration-200 overflow-hidden" class:w-[560px]={!editorCollapsed} class:w-0={editorCollapsed}>
-    {#if !editorCollapsed}
+  <aside
+    class="shrink-0 bg-card border-border flex flex-col transition-all duration-200 overflow-hidden
+           md:h-full md:max-h-full md:border-l"
+    class:hidden={isMobile && mobilePanel !== 'edit'}
+    class:w-full={isMobile && mobilePanel === 'edit'}
+    class:flex-1={isMobile && mobilePanel === 'edit'}
+    class:w-[560px]={!isMobile && !editorCollapsed}
+    class:w-0={!isMobile && editorCollapsed}
+  >
+    {#if isMobile || !editorCollapsed}
       <!-- Header with tabs and controls -->
       <div class="flex items-center border-b border-border bg-muted/30 shrink-0 min-h-fit">
         <div class="flex-1 flex items-center overflow-x-auto">
@@ -276,10 +327,11 @@
         >
           +
         </Button>
+        <!-- Collapse button: desktop only -->
         <Button
           variant="ghost"
           size="sm"
-          class="h-8 w-8 p-0 shrink-0"
+          class="hidden md:flex h-8 w-8 p-0 shrink-0"
           onclick={() => editorCollapsed = true}
           title="Hide editor"
         >
@@ -297,8 +349,8 @@
     {/if}
   </aside>
 
-  <!-- Show editor button when collapsed -->
-  {#if editorCollapsed}
+  <!-- Show editor button when collapsed (desktop only) -->
+  {#if editorCollapsed && !isMobile}
     <Button
       variant="secondary"
       size="sm"
@@ -308,6 +360,59 @@
       ⟨ Editor
     </Button>
   {/if}
+
+  <!-- Mobile bottom nav -->
+  <nav
+    class="flex md:hidden items-stretch border-t border-border bg-card shrink-0"
+    style="padding-bottom: env(safe-area-inset-bottom, 0px)"
+  >
+    <!-- Preview button -->
+    <button
+      class="flex-1 flex flex-col items-center justify-center gap-1 min-h-14 text-xs transition-colors"
+      class:text-foreground={mobilePanel === 'preview'}
+      class:text-muted-foreground={mobilePanel !== 'preview'}
+      onclick={() => mobilePanel = 'preview'}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span>Preview</span>
+    </button>
+
+    <!-- Edit button -->
+    <button
+      class="flex-1 flex flex-col items-center justify-center gap-1 min-h-14 text-xs transition-colors"
+      class:text-foreground={mobilePanel === 'edit'}
+      class:text-muted-foreground={mobilePanel !== 'edit'}
+      onclick={() => mobilePanel = 'edit'}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+      </svg>
+      <span>Edit</span>
+    </button>
+
+    <!-- Settings button -->
+    <button
+      class="flex-1 flex flex-col items-center justify-center gap-1 min-h-14 text-xs transition-colors"
+      class:text-foreground={mobilePanel === 'settings'}
+      class:text-muted-foreground={mobilePanel !== 'settings'}
+      onclick={() => mobilePanel = 'settings'}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/>
+        <circle cx="12" cy="4" r="2"/>
+        <line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/>
+        <circle cx="10" cy="12" r="2"/>
+        <line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/>
+        <circle cx="14" cy="20" r="2"/>
+      </svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
 </div>
 
 <!-- Hidden export slides -->
