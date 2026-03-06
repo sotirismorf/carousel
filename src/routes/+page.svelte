@@ -1,11 +1,11 @@
 <script>
-  import Slide from './lib/Slide.svelte';
-  import { parseAndSplitMarkdown } from './lib/utils/markdown.js';
-  import { exportSlidesToZip } from './lib/utils/export.js';
-  import { generateGradientColors } from './lib/utils/color.js';
-import { generateRandomPositions } from './lib/utils/background.js';
-  import { DIMENSIONS, CORNERS, EXPORT_SCALES, DEFAULT_CORNER } from './lib/utils/constants.js';
-  import { createDocumentsStore } from './lib/stores/documents.svelte.js';
+  import Slide from '$lib/Slide.svelte';
+  import { parseAndSplitMarkdown } from '$lib/utils/markdown.js';
+  import { exportSlidesToZip } from '$lib/utils/export.js';
+  import { generateGradientColors } from '$lib/utils/color.js';
+import { generateRandomPositions } from '$lib/utils/background.js';
+  import { DIMENSIONS, CORNERS, EXPORT_SCALES, DEFAULT_CORNER } from '$lib/utils/constants.js';
+  import { createDocumentsStore } from '$lib/stores/documents.svelte.js';
 
   import { Button } from '$lib/components/ui/button';
   import { Slider } from '$lib/components/ui/slider';
@@ -13,10 +13,10 @@ import { generateRandomPositions } from './lib/utils/background.js';
   import { Separator } from '$lib/components/ui/separator';
   import { Input } from '$lib/components/ui/input';
 
-  import FormatControls from './lib/components/FormatControls.svelte';
-  import TextControls from './lib/components/TextControls.svelte';
-  import BackgroundControls from './lib/components/BackgroundControls.svelte';
-  import CornerControls from './lib/components/CornerControls.svelte';
+  import FormatControls from '$lib/components/FormatControls.svelte';
+  import TextControls from '$lib/components/TextControls.svelte';
+  import BackgroundControls from '$lib/components/BackgroundControls.svelte';
+  import CornerControls from '$lib/components/CornerControls.svelte';
 
   // Documents store for persistence
   const docs = createDocumentsStore();

@@ -13,12 +13,16 @@ npm run build    # Build for production
 
 ## Architecture
 
-Svelte 5 + Vite app that converts markdown into Instagram carousel images.
+SvelteKit + Svelte 5 app that converts markdown into Instagram carousel images.
+Uses `@sveltejs/adapter-static` for GitHub Pages deployment (output in `build/`).
 
 ### Key Files
 ```
 src/
-├── App.svelte                    # Main app, dark mode root
+├── app.html                      # SvelteKit HTML shell
+├── routes/
+│   ├── +layout.svelte            # Root layout (imports app.css)
+│   └── +page.svelte              # Main app, dark mode root
 ├── lib/
 │   ├── Slide.svelte              # Slide renderer
 │   ├── components/
