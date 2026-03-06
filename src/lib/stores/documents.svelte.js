@@ -1,4 +1,4 @@
-import { DEFAULT_MARKDOWN } from '../utils/constants.js';
+import { DEFAULT_MARKDOWN, DEFAULT_SETTINGS } from '../utils/constants.js';
 
 const STORAGE_KEY = 'carousel-documents';
 
@@ -11,6 +11,7 @@ function createDefaultDocument() {
     id: generateId(),
     name: 'Untitled',
     content: DEFAULT_MARKDOWN,
+    settings: structuredClone(DEFAULT_SETTINGS),
     createdAt: Date.now(),
   };
 }
@@ -24,6 +25,11 @@ function loadFromStorage() {
     if (stored) {
       const data = JSON.parse(stored);
       if (data.documents && data.documents.length > 0) {
+        // Merge stored settings with defaults to handle missing keys from older saves
+        data.documents = data.documents.map(doc => ({
+          ...doc,
+          settings: { ...structuredClone(DEFAULT_SETTINGS), ...doc.settings },
+        }));
         return data;
       }
     }
@@ -92,14 +98,23 @@ export function createDocumentsStore() {
     activeId = id;
   }
 
+  function updateActiveSettings(newSettings) {
+    const doc = documents.find(d => d.id === activeId);
+    if (doc) {
+      doc.settings = newSettings;
+    }
+  }
+
   return {
     get documents() { return documents; },
     get activeId() { return activeId; },
+    get activeSettings() { return getActiveDocument()?.settings; },
     getActiveDocument,
     setActiveContent,
     addDocument,
     removeDocument,
     renameDocument,
     setActiveId,
+    updateActiveSettings,
   };
 }

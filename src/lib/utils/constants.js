@@ -57,6 +57,37 @@ export const DEFAULT_CORNER = {
   fontFamily: '',
 };
 
+// Default settings for each document
+export const DEFAULT_SETTINGS = {
+  selectedDimension: 'square',
+  exportScale: 2,
+  previewZoom: [0.35],
+  textAlign: 'center',
+  verticalAlign: 'center',
+  fontScale: 1,
+  fontColor: '#ffffff',
+  fontFamily: '',
+  slidePadding: 60,
+  lineHeight: 1.5,
+  hyphenate: false,
+  textLang: 'en',
+  continuousBackground: true,
+  bgType: 'gradient',
+  bgSolidColor: '#667eea',
+  gradientTheme: 'dark',
+  gradientColorCount: 3,
+  gradientColors: ['#667eea', '#764ba2', '#f093fb'],
+  gradientPositions: ['40% 20%', '80% 0%', '0% 50%'],
+  bgImage: null,
+  bgImageFit: 'cover',
+  corners: {
+    topLeft: { enabled: false, type: 'text', text: '', image: null, size: 24, fontFamily: '' },
+    topRight: { enabled: false, type: 'text', text: '', image: null, size: 24, fontFamily: '' },
+    bottomLeft: { enabled: false, type: 'text', text: '', image: null, size: 24, fontFamily: '' },
+    bottomRight: { enabled: false, type: 'text', text: '', image: null, size: 24, fontFamily: '' },
+  },
+};
+
 // Predefined positions for gradient mesh blobs
 export const MESH_POSITIONS = [
   '40% 20%',

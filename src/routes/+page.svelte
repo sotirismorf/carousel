@@ -3,8 +3,8 @@
   import { parseAndSplitMarkdown } from '$lib/utils/markdown.js';
   import { exportSlidesToZip } from '$lib/utils/export.js';
   import { generateGradientColors } from '$lib/utils/color.js';
-import { generateRandomPositions } from '$lib/utils/background.js';
-  import { DIMENSIONS, CORNERS, EXPORT_SCALES, DEFAULT_CORNER } from '$lib/utils/constants.js';
+  import { generateRandomPositions } from '$lib/utils/background.js';
+  import { DIMENSIONS, CORNERS, EXPORT_SCALES, DEFAULT_SETTINGS } from '$lib/utils/constants.js';
   import { createDocumentsStore } from '$lib/stores/documents.svelte.js';
 
   import { Button } from '$lib/components/ui/button';
@@ -21,58 +21,28 @@ import { generateRandomPositions } from '$lib/utils/background.js';
   // Documents store for persistence
   const docs = createDocumentsStore();
 
-  // State - UI
-  let selectedDimension = $state('square');
-  let exportScale = $state(2);
+  // State - UI (not per-document)
   let isExporting = $state(false);
   let editorCollapsed = $state(false);
   let editingTabId = $state(null);
   let editingTabName = $state('');
 
-  // Derived markdown text from active document
-  const markdownText = $derived(docs.getActiveDocument()?.content || '');
-
-  // State - Text styles
-  let textAlign = $state('center');
-  let verticalAlign = $state('center');
-  let fontScale = $state(1);
-  let fontColor = $state('#ffffff');
-  let fontFamily = $state('');
-  let slidePadding = $state(60);
-  let previewZoom = $state([0.35]);
-  let continuousBackground = $state(true);
-  let lineHeight = $state(1.5);
-  let hyphenate = $state(false);
-  let textLang = $state('en');
-
-  // State - Background
-  let bgType = $state('gradient');
-  let bgSolidColor = $state('#667eea');
-  let gradientTheme = $state('dark');
-  let gradientColorCount = $state(3);
-  let gradientColors = $state(['#667eea', '#764ba2', '#f093fb']);
-  let gradientPositions = $state(['40% 20%', '80% 0%', '0% 50%']);
-  let bgImage = $state(null);
-  let bgImageFit = $state('cover');
-
-  // State - Corner watermarks
-  let corners = $state({
-    topLeft: { ...DEFAULT_CORNER },
-    topRight: { ...DEFAULT_CORNER },
-    bottomLeft: { ...DEFAULT_CORNER },
-    bottomRight: { ...DEFAULT_CORNER },
-  });
-
   // Export refs
   let slideElements = $state([]);
 
+  // Settings are a reactive lens into the active document — mutations flow straight to the store
+  const settings = $derived(docs.activeSettings);
+
+  // Derived markdown text from active document
+  const markdownText = $derived(docs.getActiveDocument()?.content || '');
+
   // Derived values
-  const dimension = $derived(DIMENSIONS[selectedDimension]);
+  const dimension = $derived(DIMENSIONS[settings.selectedDimension]);
   const slides = $derived(parseAndSplitMarkdown(markdownText));
-  const zoomValue = $derived(previewZoom[0]);
+  const zoomValue = $derived(settings.previewZoom[0]);
   const scaledCorners = $derived(
     Object.fromEntries(
-      Object.entries(corners).map(([key, val]) => [key, { ...val, size: val.size * exportScale }])
+      Object.entries(settings.corners).map(([key, val]) => [key, { ...val, size: val.size * settings.exportScale }])
     )
   );
 
@@ -83,8 +53,8 @@ import { generateRandomPositions } from '$lib/utils/background.js';
     try {
       await exportSlidesToZip(
         slideElements,
-        dimension.width * exportScale,
-        dimension.height * exportScale,
+        dimension.width * settings.exportScale,
+        dimension.height * settings.exportScale,
         'slides'
       );
     } catch (err) {
@@ -96,18 +66,18 @@ import { generateRandomPositions } from '$lib/utils/background.js';
   }
 
   function randomizeGradient() {
-    gradientColors = generateGradientColors(gradientColorCount, gradientTheme);
-    gradientPositions = generateRandomPositions(gradientColorCount);
-    fontColor = gradientTheme === 'light' ? '#000000' : '#ffffff';
+    settings.gradientColors = generateGradientColors(settings.gradientColorCount, settings.gradientTheme);
+    settings.gradientPositions = generateRandomPositions(settings.gradientColorCount);
+    settings.fontColor = settings.gradientTheme === 'light' ? '#000000' : '#ffffff';
   }
 
   function setTheme(theme) {
-    gradientTheme = theme;
+    settings.gradientTheme = theme;
     randomizeGradient();
   }
 
   function setColorCount(count) {
-    gradientColorCount = count;
+    settings.gradientColorCount = count;
     randomizeGradient();
   }
 
@@ -116,8 +86,8 @@ import { generateRandomPositions } from '$lib/utils/background.js';
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      corners[key].image = e.target.result;
-      corners[key].type = 'image';
+      settings.corners[key].image = e.target.result;
+      settings.corners[key].type = 'image';
     };
     reader.readAsDataURL(file);
   }
@@ -127,8 +97,8 @@ import { generateRandomPositions } from '$lib/utils/background.js';
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      bgImage = e.target.result;
-      bgType = 'image';
+      settings.bgImage = e.target.result;
+      settings.bgType = 'image';
     };
     reader.readAsDataURL(file);
   }
@@ -147,33 +117,33 @@ import { generateRandomPositions } from '$lib/utils/background.js';
     </header>
 
     <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-5">
-      <FormatControls bind:selectedDimension bind:exportScale />
+      <FormatControls bind:selectedDimension={settings.selectedDimension} bind:exportScale={settings.exportScale} />
 
       <Separator />
 
       <TextControls
-        bind:textAlign
-        bind:verticalAlign
-        bind:fontScale
-        bind:fontColor
-        bind:fontFamily
-        bind:slidePadding
-        bind:lineHeight
-        bind:hyphenate
-        bind:textLang
+        bind:textAlign={settings.textAlign}
+        bind:verticalAlign={settings.verticalAlign}
+        bind:fontScale={settings.fontScale}
+        bind:fontColor={settings.fontColor}
+        bind:fontFamily={settings.fontFamily}
+        bind:slidePadding={settings.slidePadding}
+        bind:lineHeight={settings.lineHeight}
+        bind:hyphenate={settings.hyphenate}
+        bind:textLang={settings.textLang}
       />
 
       <Separator />
 
       <BackgroundControls
-        bind:bgType
-        bind:bgSolidColor
-        bind:gradientTheme
-        bind:gradientColorCount
-        bind:gradientColors
-        bind:bgImage
-        bind:bgImageFit
-        bind:continuousBackground
+        bind:bgType={settings.bgType}
+        bind:bgSolidColor={settings.bgSolidColor}
+        bind:gradientTheme={settings.gradientTheme}
+        bind:gradientColorCount={settings.gradientColorCount}
+        bind:gradientColors={settings.gradientColors}
+        bind:bgImage={settings.bgImage}
+        bind:bgImageFit={settings.bgImageFit}
+        bind:continuousBackground={settings.continuousBackground}
         onThemeChange={setTheme}
         onColorCountChange={setColorCount}
         onBgImageUpload={handleBgImageUpload}
@@ -181,14 +151,14 @@ import { generateRandomPositions } from '$lib/utils/background.js';
 
       <Separator />
 
-      <CornerControls bind:corners onImageUpload={handleImageUpload} />
+      <CornerControls bind:corners={settings.corners} onImageUpload={handleImageUpload} />
 
       <Separator />
 
       <section class="space-y-2">
         <Label class="text-xs font-semibold uppercase text-muted-foreground block">Preview</Label>
         <div class="flex items-center gap-3">
-          <Slider bind:value={previewZoom} min={0.15} max={0.6} step={0.05} stepFine={0.01} class="flex-1" />
+          <Slider bind:value={settings.previewZoom} min={0.15} max={0.6} step={0.05} stepFine={0.01} class="flex-1" />
           <span class="text-muted-foreground w-10 text-right">{Math.round(zoomValue * 100)}%</span>
         </div>
       </section>
@@ -211,25 +181,25 @@ import { generateRandomPositions } from '$lib/utils/background.js';
               width={dimension.width}
               height={dimension.height}
               scale={zoomValue}
-              {textAlign}
-              {verticalAlign}
-              {fontScale}
-              {fontColor}
-              {fontFamily}
-              {bgType}
-              {bgSolidColor}
-              {gradientColors}
-              {gradientPositions}
-              {bgImage}
-              {bgImageFit}
-              {corners}
-              padding={slidePadding}
-              {continuousBackground}
+              textAlign={settings.textAlign}
+              verticalAlign={settings.verticalAlign}
+              fontScale={settings.fontScale}
+              fontColor={settings.fontColor}
+              fontFamily={settings.fontFamily}
+              bgType={settings.bgType}
+              bgSolidColor={settings.bgSolidColor}
+              gradientColors={settings.gradientColors}
+              gradientPositions={settings.gradientPositions}
+              bgImage={settings.bgImage}
+              bgImageFit={settings.bgImageFit}
+              corners={settings.corners}
+              padding={settings.slidePadding}
+              continuousBackground={settings.continuousBackground}
               slideIndex={i}
               totalSlides={slides.length}
-              {lineHeight}
-              {hyphenate}
-              {textLang}
+              lineHeight={settings.lineHeight}
+              hyphenate={settings.hyphenate}
+              textLang={settings.textLang}
             />
           </div>
         {/each}
@@ -346,28 +316,28 @@ import { generateRandomPositions } from '$lib/utils/background.js';
     <div bind:this={slideElements[i]}>
       <Slide
         {html}
-        width={dimension.width * exportScale}
-        height={dimension.height * exportScale}
+        width={dimension.width * settings.exportScale}
+        height={dimension.height * settings.exportScale}
         scale={1}
-        {textAlign}
-        {verticalAlign}
-        fontScale={fontScale * exportScale}
-        {fontColor}
-        {fontFamily}
-        {bgType}
-        {bgSolidColor}
-        {gradientColors}
-        {gradientPositions}
-        {bgImage}
-        {bgImageFit}
+        textAlign={settings.textAlign}
+        verticalAlign={settings.verticalAlign}
+        fontScale={settings.fontScale * settings.exportScale}
+        fontColor={settings.fontColor}
+        fontFamily={settings.fontFamily}
+        bgType={settings.bgType}
+        bgSolidColor={settings.bgSolidColor}
+        gradientColors={settings.gradientColors}
+        gradientPositions={settings.gradientPositions}
+        bgImage={settings.bgImage}
+        bgImageFit={settings.bgImageFit}
         corners={scaledCorners}
-        padding={slidePadding * exportScale}
-        {continuousBackground}
+        padding={settings.slidePadding * settings.exportScale}
+        continuousBackground={settings.continuousBackground}
         slideIndex={i}
         totalSlides={slides.length}
-        {lineHeight}
-        {hyphenate}
-        {textLang}
+        lineHeight={settings.lineHeight}
+        hyphenate={settings.hyphenate}
+        textLang={settings.textLang}
       />
     </div>
   {/each}
