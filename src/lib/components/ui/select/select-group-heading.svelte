@@ -1,18 +1,20 @@
-<script>
-	import { Select as SelectPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils.js";
+<script lang="ts">
+	import { Select as SelectPrimitive } from 'bits-ui';
+	import type { Snippet, ComponentProps } from 'svelte';
+	import { cn } from '$lib/utils';
+
 	let {
 		ref = $bindable(null),
 		class: className,
 		children,
 		...restProps
-	} = $props();
+	}: ComponentProps<typeof SelectPrimitive.GroupHeading> & { children?: Snippet } = $props();
 </script>
 
 <SelectPrimitive.GroupHeading
 	bind:ref
 	data-slot="select-group-heading"
-	class={cn("text-muted-foreground px-2 py-1.5 text-xs", className)}
+	class={cn('text-muted-foreground px-2 py-1.5 text-xs', className)}
 	{...restProps}
 >
 	{@render children?.()}

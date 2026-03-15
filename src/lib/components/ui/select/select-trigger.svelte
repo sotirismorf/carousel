@@ -1,14 +1,19 @@
-<script>
-	import { Select as SelectPrimitive } from "bits-ui";
-	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-	import { cn } from "$lib/utils.js";
+<script lang="ts">
+	import { Select as SelectPrimitive } from 'bits-ui';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import type { Snippet } from 'svelte';
+	import type { ComponentProps } from 'svelte';
+	import { cn } from '$lib/utils';
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		children,
-		size = "default",
+		size = 'default',
 		...restProps
+	}: ComponentProps<typeof SelectPrimitive.Trigger> & {
+		size?: 'default' | 'sm';
+		children?: Snippet;
 	} = $props();
 </script>
 

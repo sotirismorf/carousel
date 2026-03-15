@@ -24,7 +24,7 @@ This is a **markdown to carousel** demo.
 
 > Keep slides simple and focused
 
-Use **bold** and *italic* for emphasis.
+Use **bold** and _italic_ for emphasis.
 
 ---
 

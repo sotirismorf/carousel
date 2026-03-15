@@ -1,19 +1,20 @@
-<script>
-	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-	import { Select as SelectPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils.js";
+<script lang="ts">
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import { Select as SelectPrimitive } from 'bits-ui';
+	import type { ComponentProps } from 'svelte';
+	import { cn } from '$lib/utils';
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		...restProps
-	} = $props();
+	}: ComponentProps<typeof SelectPrimitive.ScrollDownButton> = $props();
 </script>
 
 <SelectPrimitive.ScrollDownButton
 	bind:ref
 	data-slot="select-scroll-down-button"
-	class={cn("flex cursor-default items-center justify-center py-1", className)}
+	class={cn('flex cursor-default items-center justify-center py-1', className)}
 	{...restProps}
 >
 	<ChevronDownIcon class="size-4" />

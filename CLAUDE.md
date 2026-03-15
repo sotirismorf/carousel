@@ -2,13 +2,13 @@
 
 ## Important
 
-Always run `npm run dev` in the background at the start of each session.
+Always run `pnpm dev` in the background at the start of each session.
 
 ## Commands
 
 ```bash
-npm run dev      # Start dev server (http://localhost:5173)
-npm run build    # Build for production
+pnpm build    # Build for production
+pnpm check    # Type-check with svelte-check
 ```
 
 ## Architecture
@@ -17,6 +17,7 @@ SvelteKit + Svelte 5 app that converts markdown into Instagram carousel images.
 Uses `@sveltejs/adapter-static` for GitHub Pages deployment (output in `build/`).
 
 ### Key Files
+
 ```
 src/
 ├── app.html                      # SvelteKit HTML shell
@@ -31,11 +32,11 @@ src/
 │   │   ├── BackgroundControls.svelte
 │   │   └── CornerControls.svelte
 │   └── utils/
-│       ├── constants.js          # DIMENSIONS, CORNERS, EXPORT_SCALES
-│       ├── color.js              # Color generation
-│       ├── background.js         # Background computation
-│       ├── markdown.js           # Markdown parsing
-│       └── export.js             # PNG/ZIP export
+│       ├── constants.ts          # DIMENSIONS, CORNERS, EXPORT_SCALES
+│       ├── color.ts              # Color generation
+│       ├── background.ts         # Background computation
+│       ├── markdown.ts           # Markdown parsing
+│       └── export.ts             # PNG/ZIP export
 ```
 
 ## Svelte 5 Patterns
@@ -44,14 +45,14 @@ This project uses Svelte 5 runes. Always use:
 
 ```svelte
 <script>
-  // Props with $props() - use $bindable() for two-way binding
-  let { value = $bindable(), onClick } = $props();
+	// Props with $props() - use $bindable() for two-way binding
+	let { value = $bindable(), onClick } = $props();
 
-  // State with $state
-  let count = $state(0);
+	// State with $state
+	let count = $state(0);
 
-  // Derived values with $derived
-  const doubled = $derived(count * 2);
+	// Derived values with $derived
+	const doubled = $derived(count * 2);
 </script>
 ```
 
@@ -60,18 +61,21 @@ This project uses Svelte 5 runes. Always use:
 ## shadcn-svelte
 
 ### Installed Components
+
 button, input, label, select, separator, switch, slider
 
 ### Add Components
+
 ```bash
 npx shadcn-svelte@latest add [component-name]
 ```
 
 ### Import Pattern
+
 ```svelte
 <script>
-  import { Button } from '$lib/components/ui/button';
-  import * as Select from '$lib/components/ui/select';
+	import { Button } from '$lib/components/ui/button';
+	import * as Select from '$lib/components/ui/select';
 </script>
 ```
 
@@ -81,24 +85,26 @@ This app uses **dark mode**. The root element has `class="dark"`.
 
 **Always use semantic color classes, never hardcoded colors:**
 
-| Wrong | Correct |
-|-------|---------|
-| `text-zinc-500` | `text-muted-foreground` |
-| `text-zinc-400` | `text-muted-foreground` |
+| Wrong             | Correct                           |
+| ----------------- | --------------------------------- |
+| `text-zinc-500`   | `text-muted-foreground`           |
+| `text-zinc-400`   | `text-muted-foreground`           |
 | `border-zinc-700` | `border-border` or `border-input` |
-| `bg-zinc-800` | `bg-muted` |
-| `bg-zinc-900` | `bg-background` |
-| `bg-zinc-950` | `bg-card` |
+| `bg-zinc-800`     | `bg-muted`                        |
+| `bg-zinc-900`     | `bg-background`                   |
+| `bg-zinc-950`     | `bg-card`                         |
 
 **Dark mode CSS variables must use semi-transparent borders:**
+
 ```css
 .dark {
-  --border: oklch(1 0 0 / 10%);  /* NOT solid colors */
-  --input: oklch(1 0 0 / 15%);
+	--border: oklch(1 0 0 / 10%); /* NOT solid colors */
+	--input: oklch(1 0 0 / 15%);
 }
 ```
 
 If components have white outlines or look wrong, check:
+
 1. Root element has `class="dark"`
 2. CSS uses correct dark mode variables from shadcn docs
 3. Components use semantic classes, not hardcoded zinc colors
@@ -116,12 +122,14 @@ mcp__plugin_context7_context7__query-docs
 ```
 
 **When to query Context7:**
+
 - Adding new shadcn components
 - Theming/CSS variable issues
 - Component API questions
 - Installation/configuration problems
 
 **Example queries:**
+
 - "Button component variants and sizes"
 - "Dark mode CSS variables theming"
 - "Select component usage with bind:value"
@@ -130,6 +138,7 @@ mcp__plugin_context7_context7__query-docs
 ### Context7 - Other Libraries
 
 To find library IDs for other packages:
+
 ```
 mcp__plugin_context7_context7__resolve-library-id
   libraryName: "package-name"
@@ -139,11 +148,12 @@ mcp__plugin_context7_context7__resolve-library-id
 ### Svelte MCP Server
 
 For Svelte 5 / SvelteKit documentation:
+
 1. **list-sections** - Discover available doc sections
 2. **get-documentation** - Fetch specific sections
 3. **svelte-autofixer** - Validate Svelte code before presenting to user
 
-## Svelte expertice
+## Svelte expertise
 
 ### Focus Areas
 
@@ -161,7 +171,6 @@ For Svelte 5 / SvelteKit documentation:
 ### Approach
 
 - Embrace Svelte's unidirectional data flow for simplicity
-- Use the Svelte REPL for rapid iterations and prototyping
 - Maintain a clean component hierarchy for better readability
 - Design components with accessibility (a11y) in mind
 - Leverage built-in Svelte directives (`if`, `each`, `await`) effectively

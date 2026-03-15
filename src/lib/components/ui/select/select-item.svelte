@@ -1,7 +1,8 @@
-<script>
-	import CheckIcon from "@lucide/svelte/icons/check";
-	import { Select as SelectPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils.js";
+<script lang="ts">
+	import CheckIcon from '@lucide/svelte/icons/check';
+	import { Select as SelectPrimitive } from 'bits-ui';
+	import type { Snippet } from 'svelte';
+	import { cn } from '$lib/utils';
 
 	let {
 		ref = $bindable(null),
@@ -10,18 +11,25 @@
 		label,
 		children: childrenProp,
 		...restProps
+	}: {
+		ref?: HTMLDivElement | null;
+		class?: string;
+		value: string | number;
+		label?: string;
+		children?: Snippet<[{ selected: boolean; highlighted: boolean }]>;
+		[key: string]: unknown;
 	} = $props();
 </script>
 
 <SelectPrimitive.Item
 	bind:ref
-	{value}
+	value={value as string}
 	data-slot="select-item"
 	class={cn(
 		"data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 ps-2 pe-8 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
 		className
 	)}
-	{...restProps}
+	{...restProps as Record<string, never>}
 >
 	{#snippet children({ selected, highlighted })}
 		<span class="absolute end-2 flex size-3.5 items-center justify-center">

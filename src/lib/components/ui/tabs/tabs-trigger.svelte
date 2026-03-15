@@ -1,12 +1,13 @@
-<script>
-	import { Tabs as TabsPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils.js";
+<script lang="ts">
+	import { Tabs as TabsPrimitive } from 'bits-ui';
+	import type { ComponentProps } from 'svelte';
+	import { cn } from '$lib/utils';
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		...restProps
-	} = $props();
+	}: ComponentProps<typeof TabsPrimitive.Trigger> = $props();
 </script>
 
 <TabsPrimitive.Trigger
