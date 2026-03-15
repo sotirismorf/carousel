@@ -181,6 +181,9 @@
 				bind:lineHeight={settings.lineHeight}
 				bind:hyphenate={settings.hyphenate}
 				bind:textLang={settings.textLang}
+				bind:textBgEnabled={settings.textBgEnabled}
+				bind:textBgColor={settings.textBgColor}
+				bind:textBgPadding={settings.textBgPadding}
 			/>
 
 			<Separator />
@@ -267,6 +270,9 @@
 								lineHeight={settings.lineHeight}
 								hyphenate={settings.hyphenate}
 								textLang={settings.textLang}
+								textBgEnabled={settings.textBgEnabled}
+								textBgColor={settings.textBgColor}
+								textBgPadding={settings.textBgPadding}
 							/>
 						</div>
 					{/each}
@@ -524,6 +530,9 @@
 				lineHeight={settings.lineHeight}
 				hyphenate={settings.hyphenate}
 				textLang={settings.textLang}
+				textBgEnabled={settings.textBgEnabled}
+				textBgColor={settings.textBgColor}
+				textBgPadding={settings.textBgPadding}
 			/>
 		</div>
 	{/each}

@@ -38,6 +38,9 @@
 		lineHeight = $bindable(),
 		hyphenate = $bindable(),
 		textLang = $bindable(),
+		textBgEnabled = $bindable(),
+		textBgColor = $bindable(),
+		textBgPadding = $bindable(),
 	}: {
 		textAlign: Settings['textAlign'];
 		verticalAlign: Settings['verticalAlign'];
@@ -48,6 +51,9 @@
 		lineHeight: number;
 		hyphenate: boolean;
 		textLang: string;
+		textBgEnabled: boolean;
+		textBgColor: string;
+		textBgPadding: number;
 	} = $props();
 
 	// Font availability check
@@ -186,5 +192,32 @@
 				</Select.Root>
 			{/if}
 		</div>
+
+		<Label class="text-muted-foreground">Text BG</Label>
+		<div class="flex items-center gap-2">
+			<Switch bind:checked={textBgEnabled} />
+			{#if textBgEnabled}
+				<input
+					type="color"
+					bind:value={textBgColor}
+					class="w-8 h-8 rounded border border-input cursor-pointer"
+				/>
+			{/if}
+		</div>
+
+		{#if textBgEnabled}
+			<Label class="text-muted-foreground">BG Pad</Label>
+			<div class="flex items-center gap-2">
+				<Slider
+					value={[textBgPadding]}
+					onValueChange={(v) => (textBgPadding = v[0])}
+					min={0}
+					max={20}
+					step={1}
+					class="flex-1"
+				/>
+				<span class="text-muted-foreground w-10 text-right">{textBgPadding}px</span>
+			</div>
+		{/if}
 	</div>
 </section>

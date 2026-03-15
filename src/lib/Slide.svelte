@@ -45,6 +45,9 @@
 		lineHeight = 1.5,
 		hyphenate = false,
 		textLang = 'en',
+		textBgEnabled = false,
+		textBgColor = 'rgba(0,0,0,0.5)',
+		textBgPadding = 4,
 	}: {
 		html?: string;
 		width?: number;
@@ -69,6 +72,9 @@
 		lineHeight?: number;
 		hyphenate?: boolean;
 		textLang?: string;
+		textBgEnabled?: boolean;
+		textBgColor?: string;
+		textBgPadding?: number;
 	} = $props();
 
 	// Derived values using Svelte 5 runes
@@ -91,6 +97,14 @@
 	);
 
 	const backgroundRepeat = $derived(getBackgroundRepeat(bgType, continuousBackground, bgImageFit));
+
+	const processedHtml = $derived(
+		textBgEnabled
+			? html
+					.replace(/<(h[1-6]|p|li)(\s[^>]*)?>/g, '<$1$2><span class="text-bg-inner">')
+					.replace(/<\/(h[1-6]|p|li)>/g, '</span></$1>')
+			: html
+	);
 
 	const baseFontSize = $derived(36 * fontScale);
 
@@ -156,8 +170,25 @@
 	</div>
 
 	<!-- Main content -->
+	{#if textBgEnabled}
+		<div
+			class="slide-content slide-bg-layer"
+			aria-hidden="true"
+			lang={hyphenate ? textLang : undefined}
+			style:text-align={textAlign}
+			style:font-size="{baseFontSize}px"
+			style:font-family={font}
+			style:hyphens={hyphenate ? 'auto' : 'none'}
+			style:-webkit-hyphens={hyphenate ? 'auto' : 'none'}
+			style:--text-bg-color={textBgColor}
+			style:--text-bg-padding="{textBgPadding}px"
+		>
+			{@html processedHtml}
+		</div>
+	{/if}
 	<div
 		class="slide-content"
+		class:has-text-bg={textBgEnabled}
 		lang={hyphenate ? textLang : undefined}
 		style:text-align={textAlign}
 		style:font-size="{baseFontSize}px"
@@ -165,8 +196,10 @@
 		style:font-family={font}
 		style:hyphens={hyphenate ? 'auto' : 'none'}
 		style:-webkit-hyphens={hyphenate ? 'auto' : 'none'}
+		style:--text-bg-color={textBgColor}
+		style:--text-bg-padding="{textBgPadding}px"
 	>
-		{@html html}
+		{@html processedHtml}
 	</div>
 
 	<!-- Bottom corners row (always rendered for grid layout) -->
@@ -260,6 +293,8 @@
 		overflow: hidden;
 		z-index: 1;
 		align-self: var(--vertical-align, center);
+		grid-row: 2;
+		grid-column: 1;
 	}
 
 	.slide-content :global(h1) {
@@ -345,6 +380,31 @@
 		padding-left: 0.7em;
 		margin: 0.5em 0;
 		font-style: italic;
+	}
+
+	/* Background layer: behind, text invisible */
+	.slide-bg-layer {
+		color: transparent;
+		pointer-events: none;
+		z-index: 0;
+		overflow: visible;
+	}
+
+	.slide-bg-layer :global(.text-bg-inner) {
+		background-color: var(--text-bg-color);
+		padding: var(--text-bg-padding);
+		box-decoration-break: clone;
+		-webkit-box-decoration-break: clone;
+		text-box: trim-both cap alphabetic;
+	}
+
+	/* Text layer: same padding for layout match, no background */
+	.slide-content.has-text-bg :global(.text-bg-inner) {
+		padding: var(--text-bg-padding);
+		box-decoration-break: clone;
+		-webkit-box-decoration-break: clone;
+		background: transparent;
+		text-box: trim-both cap alphabetic;
 	}
 
 	.corner-item :global(strong) {

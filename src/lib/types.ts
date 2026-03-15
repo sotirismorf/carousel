@@ -48,6 +48,9 @@ export interface Settings {
 	bgImage: string | null;
 	bgImageFit: 'cover' | 'repeat';
 	corners: Record<string, CornerConfig>;
+	textBgEnabled: boolean;
+	textBgColor: string;
+	textBgPadding: number;
 }
 
 // Named CarouselDocument to avoid shadowing the DOM `Document` global

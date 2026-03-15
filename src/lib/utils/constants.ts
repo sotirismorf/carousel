@@ -86,6 +86,9 @@ export const DEFAULT_SETTINGS: Settings = {
 		string,
 		CornerConfig
 	>,
+	textBgEnabled: false,
+	textBgColor: 'rgba(0,0,0,0.5)',
+	textBgPadding: 4,
 };
 
 // Predefined positions for gradient mesh blobs
