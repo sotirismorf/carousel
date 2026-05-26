@@ -26,8 +26,13 @@ export async function exportSlidesToZip(
 ): Promise<void> {
 	const zip = new JSZip();
 
-	for (let i = 0; i < slideNodes.length; i++) {
-		const blob = await nodeToBlob(slideNodes[i], width, height);
+	const nodes = slideNodes.filter((n): n is HTMLElement => n instanceof HTMLElement);
+	if (nodes.length === 0) {
+		throw new Error('No slides available to export');
+	}
+
+	for (let i = 0; i < nodes.length; i++) {
+		const blob = await nodeToBlob(nodes[i], width, height);
 		const slideNumber = String(i + 1).padStart(2, '0');
 		zip.file(`slide-${slideNumber}.png`, blob);
 	}
