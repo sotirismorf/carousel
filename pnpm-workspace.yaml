@@ -1,4 +1,3 @@
 onlyBuiltDependencies:
   - esbuild
-overrides:
-  '@swc/helpers': 0.5.21
+minimumReleaseAge: 0
