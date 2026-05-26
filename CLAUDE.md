@@ -7,9 +7,23 @@ Always run `pnpm dev` in the background at the start of each session.
 ## Commands
 
 ```bash
-pnpm build    # Build for production
-pnpm check    # Type-check with svelte-check
+pnpm build         # Build for production
+pnpm check         # Type-check with svelte-check
+pnpm lint          # ESLint (flat config, type-aware)
+pnpm format        # Prettier write
+pnpm format:check  # Prettier check (no writes)
 ```
+
+## After every change
+
+Always run, in this order, before reporting work as done:
+
+1. `pnpm format` — apply Prettier formatting to all changed files
+2. `pnpm lint` — must pass with zero errors (fix findings, don't suppress)
+3. `pnpm check` — svelte-check type-check (note: bits-ui's published `.d.ts` produces 7 pre-existing csstype errors unrelated to our code; ignore those specific errors but no new ones)
+4. `pnpm build` — must complete successfully
+
+If any step fails on something you touched, fix the root cause rather than skipping the step or disabling the rule.
 
 ## Architecture
 

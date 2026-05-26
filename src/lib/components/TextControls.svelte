@@ -91,7 +91,7 @@
 	<div class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
 		<Label class="text-muted-foreground">Align</Label>
 		<div class="flex">
-			{#each ['left', 'center', 'right', 'justify'] as a}
+			{#each ['left', 'center', 'right', 'justify'] as a (a)}
 				<Button
 					variant={textAlign === a ? 'default' : 'outline'}
 					size="sm"
@@ -105,7 +105,7 @@
 
 		<Label class="text-muted-foreground">Vertical</Label>
 		<div class="flex">
-			{#each [['top', 'T'], ['center', 'C'], ['bottom', 'B']] as [v, l]}
+			{#each [['top', 'T'], ['center', 'C'], ['bottom', 'B']] as [v, l] (v)}
 				<Button
 					variant={verticalAlign === v ? 'default' : 'outline'}
 					size="sm"
@@ -185,7 +185,7 @@
 						{languages.find((l) => l.value === textLang)?.label || 'Select language'}
 					</Select.Trigger>
 					<Select.Content>
-						{#each languages as lang}
+						{#each languages as lang (lang.value)}
 							<Select.Item value={lang.value}>{lang.label}</Select.Item>
 						{/each}
 					</Select.Content>

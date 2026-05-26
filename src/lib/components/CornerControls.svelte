@@ -19,7 +19,7 @@
 	<Label class="text-xs font-semibold uppercase text-muted-foreground block">Corners</Label>
 
 	<div class="flex">
-		{#each CORNERS as c}
+		{#each CORNERS as c (c.key)}
 			<Button
 				variant={corners[c.key].enabled ? 'default' : 'outline'}
 				size="sm"
@@ -31,7 +31,7 @@
 		{/each}
 	</div>
 
-	{#each CORNERS as c}
+	{#each CORNERS as c (c.key)}
 		{#if corners[c.key].enabled}
 			<div class="bg-muted rounded-lg p-3 space-y-2">
 				<span class="text-xs font-semibold text-primary">{c.label}</span>

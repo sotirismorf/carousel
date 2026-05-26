@@ -4,7 +4,7 @@
 	import { exportSlidesToZip } from '$lib/utils/export';
 	import { generateGradientColors } from '$lib/utils/color';
 	import { generateRandomPositions } from '$lib/utils/background';
-	import { DIMENSIONS, CORNERS, EXPORT_SCALES, DEFAULT_SETTINGS } from '$lib/utils/constants';
+	import { DIMENSIONS } from '$lib/utils/constants';
 	import { createDocumentsStore } from '$lib/stores/documents.svelte';
 	import type { Settings, CornerConfig } from '$lib/types';
 
@@ -12,7 +12,6 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import { Label } from '$lib/components/ui/label';
 	import { Separator } from '$lib/components/ui/separator';
-	import { Input } from '$lib/components/ui/input';
 
 	import FormatControls from '$lib/components/FormatControls.svelte';
 	import TextControls from '$lib/components/TextControls.svelte';
@@ -236,7 +235,7 @@
 				<p class="text-muted-foreground">Write markdown to see slides</p>
 			{:else}
 				<div class="flex items-start w-max">
-					{#each slides as html, i}
+					{#each slides as html, i (i)}
 						<div
 							class="shrink-0 relative overflow-hidden"
 							style="width:{dimension.width * zoomValue}px;height:{dimension.height * zoomValue}px;"
@@ -504,7 +503,7 @@
 
 <!-- Hidden export slides -->
 <div class="absolute -left-[9999px] -top-[9999px]" aria-hidden="true">
-	{#each slides as html, i}
+	{#each slides as html, i (i)}
 		<div bind:this={slideElements[i]}>
 			<Slide
 				{html}

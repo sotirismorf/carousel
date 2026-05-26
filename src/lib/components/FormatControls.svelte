@@ -19,7 +19,7 @@
 			{DIMENSIONS[selectedDimension]?.label || 'Select format'}
 		</Select.Trigger>
 		<Select.Content>
-			{#each Object.entries(DIMENSIONS) as [key, d]}
+			{#each Object.entries(DIMENSIONS) as [key, d] (key)}
 				<Select.Item value={key}>{d.label}</Select.Item>
 			{/each}
 		</Select.Content>
@@ -30,7 +30,7 @@
 			({EXPORT_SCALES.find((s) => s.value === exportScale)?.desc})
 		</Select.Trigger>
 		<Select.Content>
-			{#each EXPORT_SCALES as scale}
+			{#each EXPORT_SCALES as scale (scale.value)}
 				<Select.Item value={scale.value}>{scale.label} ({scale.desc})</Select.Item>
 			{/each}
 		</Select.Content>

@@ -35,7 +35,7 @@
 	<Label class="text-xs font-semibold uppercase text-muted-foreground block">Background</Label>
 
 	<div class="flex">
-		{#each [['solid', 'Solid'], ['gradient', 'Gradient'], ['image', 'Image']] as [type, label]}
+		{#each [['solid', 'Solid'], ['gradient', 'Gradient'], ['image', 'Image']] as [type, label] (type)}
 			<Button
 				variant={bgType === type ? 'default' : 'outline'}
 				size="sm"
@@ -78,7 +78,7 @@
 
 			<Label class="text-muted-foreground">Colors</Label>
 			<div class="flex">
-				{#each [1, 2, 3, 4, 5] as count}
+				{#each [1, 2, 3, 4, 5] as count (count)}
 					<Button
 						variant={gradientColorCount === count ? 'default' : 'outline'}
 						size="sm"
@@ -90,7 +90,7 @@
 				{/each}
 			</div>
 
-			{#each gradientColors as color, i}
+			{#each gradientColors as _, i (i)}
 				<Label class="text-muted-foreground">{i + 1}</Label>
 				<input
 					type="color"
