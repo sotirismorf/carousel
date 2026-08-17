@@ -7,110 +7,88 @@
 		getBackgroundPosition,
 		getBackgroundRepeat,
 	} from './utils/background';
-	import type { Settings, CornerConfig } from '$lib/types';
+	import { CORNER_ROWS } from './utils/constants';
+	import SlideImages from './components/SlideImages.svelte';
+	import type { Settings, RenderContext, DeckImages } from '$lib/types';
 
 	let {
 		html = '',
-		width = 1080,
-		height = 1080,
-		scale = 0.3,
-		textAlign = 'center',
-		verticalAlign = 'center',
-		fontScale = 1,
-		fontColor = '#ffffff',
-		fontFamily = '',
-		bgType = 'gradient',
-		bgSolidColor = '#667eea',
-		gradientColors = ['#667eea', '#764ba2', '#f093fb'],
-		gradientPositions = ['40% 20%', '80% 0%', '0% 50%'],
-		bgImage = null,
-		bgImageFit = 'cover',
-		padding = 60,
-		corners = {
-			topLeft: { enabled: false, type: 'text', text: '', image: null, size: 24, fontFamily: '' },
-			topRight: { enabled: false, type: 'text', text: '', image: null, size: 24, fontFamily: '' },
-			bottomLeft: { enabled: false, type: 'text', text: '', image: null, size: 24, fontFamily: '' },
-			bottomRight: {
-				enabled: false,
-				type: 'text',
-				text: '',
-				image: null,
-				size: 24,
-				fontFamily: '',
-			},
-		},
-		continuousBackground = false,
-		slideIndex = 0,
-		totalSlides = 1,
-		lineHeight = 1.5,
-		hyphenate = false,
-		textLang = 'en',
-		textBgEnabled = false,
-		textBgColor = 'rgba(0,0,0,0.5)',
-		textBgPadding = 4,
+		settings,
+		render,
+		images,
+		showPlaceholders = false,
 	}: {
 		html?: string;
-		width?: number;
-		height?: number;
-		scale?: number;
-		textAlign?: Settings['textAlign'];
-		verticalAlign?: Settings['verticalAlign'];
-		fontScale?: number;
-		fontColor?: string;
-		fontFamily?: string;
-		bgType?: Settings['bgType'];
-		bgSolidColor?: string;
-		gradientColors?: string[];
-		gradientPositions?: string[];
-		bgImage?: string | null;
-		bgImageFit?: Settings['bgImageFit'];
-		padding?: number;
-		corners?: Record<string, CornerConfig>;
-		continuousBackground?: boolean;
-		slideIndex?: number;
-		totalSlides?: number;
-		lineHeight?: number;
-		hyphenate?: boolean;
-		textLang?: string;
-		textBgEnabled?: boolean;
-		textBgColor?: string;
-		textBgPadding?: number;
+		settings: Settings;
+		render: RenderContext;
+		images?: DeckImages;
+		showPlaceholders?: boolean;
 	} = $props();
+
+	// Every px-valued setting is authored in the 1080-wide base design space and scaled here,
+	// so the preview and the export copy stay pixel-proportional without either call site
+	// doing arithmetic. See RenderContext.
+	const gs = $derived(render.geometryScale);
+	const width = $derived(render.width * gs);
+	const height = $derived(render.height * gs);
+	const padding = $derived(settings.slidePadding * gs);
+	const baseFontSize = $derived(36 * settings.fontScale * gs);
+	const textBgPadding = $derived(settings.textBgPadding * gs);
 
 	// Derived values using Svelte 5 runes
 	const verticalJustify = $derived(
-		{ top: 'flex-start', center: 'center', bottom: 'flex-end' }[verticalAlign] || 'center'
+		{ top: 'flex-start', center: 'center', bottom: 'flex-end' }[settings.verticalAlign] || 'center'
 	);
 
-	const backgroundColor = $derived(getBackgroundColor(bgType, bgSolidColor, gradientColors));
+	const backgroundColor = $derived(
+		getBackgroundColor(settings.bgType, settings.bgSolidColor, settings.gradientColors)
+	);
 
 	const backgroundImageValue = $derived(
-		getBackgroundImage(bgType, gradientColors, bgImage, gradientPositions)
+		getBackgroundImage(
+			settings.bgType,
+			settings.gradientColors,
+			settings.bgImage,
+			settings.gradientPositions
+		)
 	);
 
 	const backgroundSize = $derived(
-		getBackgroundSize(bgType, continuousBackground, bgImageFit, totalSlides)
+		getBackgroundSize(
+			settings.bgType,
+			settings.continuousBackground,
+			settings.bgImageFit,
+			render.totalSlides
+		)
 	);
 
+	// NOTE: this offsets a seamless background by whole slide widths, so it needs the *scaled*
+	// width — passing the base width would break continuous backgrounds at 2x/3x export.
 	const backgroundPosition = $derived(
-		getBackgroundPosition(bgType, continuousBackground, slideIndex, width, totalSlides)
+		getBackgroundPosition(
+			settings.bgType,
+			settings.continuousBackground,
+			render.slideIndex,
+			width,
+			render.totalSlides
+		)
 	);
 
-	const backgroundRepeat = $derived(getBackgroundRepeat(bgType, continuousBackground, bgImageFit));
+	const backgroundRepeat = $derived(
+		getBackgroundRepeat(settings.bgType, settings.continuousBackground, settings.bgImageFit)
+	);
 
 	const processedHtml = $derived(
-		textBgEnabled
+		settings.textBgEnabled
 			? html
 					.replace(/<(h[1-6]|p|li)(\s[^>]*)?>/g, '<$1$2><span class="text-bg-inner">')
 					.replace(/<\/(h[1-6]|p|li)>/g, '</span></$1>')
 			: html
 	);
 
-	const baseFontSize = $derived(36 * fontScale);
-
 	const font = $derived(
-		fontFamily
-			? `${fontFamily}, 'Segoe UI', system-ui, sans-serif`
+		settings.fontFamily
+			? `${settings.fontFamily}, 'Segoe UI', system-ui, sans-serif`
 			: `'Segoe UI', system-ui, sans-serif`
 	);
 
@@ -123,64 +101,57 @@
 	}
 </script>
 
+{#snippet cornerRow(position: 'top' | 'bottom')}
+	<div class="corner-row {position}">
+		{#each CORNER_ROWS[position] as key (key)}
+			{@const corner = settings.corners[key]}
+			{#if corner.enabled}
+				<div
+					class="corner-item {key.endsWith('Left') ? 'left' : 'right'}"
+					style:color={settings.fontColor}
+					style:font-family={getCornerFont(corner.fontFamily)}
+					style:font-size="{corner.size * gs}px"
+				>
+					{#if corner.type === 'image' && corner.image}
+						<img src={corner.image} alt="" style:height="{corner.size * gs * 2}px" />
+					{:else}
+						{@html parseInline(corner.text)}
+					{/if}
+				</div>
+			{/if}
+		{/each}
+	</div>
+{/snippet}
+
 <div
 	class="slide"
 	style:width="{width}px"
 	style:height="{height}px"
-	style:transform="scale({scale})"
+	style:transform="scale({render.scale})"
 	style:background-color={backgroundColor}
 	style:background-image={backgroundImageValue}
 	style:background-size={backgroundSize}
 	style:background-position={backgroundPosition}
 	style:background-repeat={backgroundRepeat}
 	style:padding="{padding}px"
-	style:--line-height={lineHeight}
+	style:--line-height={settings.lineHeight}
 	style:--vertical-align={verticalJustify}
 >
 	<!-- Top corners row (always rendered for grid layout) -->
-	<div class="corner-row top">
-		{#if corners.topLeft.enabled}
-			<div
-				class="corner-item left"
-				style:color={fontColor}
-				style:font-family={getCornerFont(corners.topLeft.fontFamily)}
-				style:font-size="{corners.topLeft.size}px"
-			>
-				{#if corners.topLeft.type === 'image' && corners.topLeft.image}
-					<img src={corners.topLeft.image} alt="" style:height="{corners.topLeft.size * 2}px" />
-				{:else}
-					{@html parseInline(corners.topLeft.text)}
-				{/if}
-			</div>
-		{/if}
-		{#if corners.topRight.enabled}
-			<div
-				class="corner-item right"
-				style:color={fontColor}
-				style:font-family={getCornerFont(corners.topRight.fontFamily)}
-				style:font-size="{corners.topRight.size}px"
-			>
-				{#if corners.topRight.type === 'image' && corners.topRight.image}
-					<img src={corners.topRight.image} alt="" style:height="{corners.topRight.size * 2}px" />
-				{:else}
-					{@html parseInline(corners.topRight.text)}
-				{/if}
-			</div>
-		{/if}
-	</div>
+	{@render cornerRow('top')}
 
 	<!-- Main content -->
-	{#if textBgEnabled}
+	{#if settings.textBgEnabled}
 		<div
 			class="slide-content slide-bg-layer"
 			aria-hidden="true"
-			lang={hyphenate ? textLang : undefined}
-			style:text-align={textAlign}
+			lang={settings.hyphenate ? settings.textLang : undefined}
+			style:text-align={settings.textAlign}
 			style:font-size="{baseFontSize}px"
 			style:font-family={font}
-			style:hyphens={hyphenate ? 'auto' : 'none'}
-			style:-webkit-hyphens={hyphenate ? 'auto' : 'none'}
-			style:--text-bg-color={textBgColor}
+			style:hyphens={settings.hyphenate ? 'auto' : 'none'}
+			style:-webkit-hyphens={settings.hyphenate ? 'auto' : 'none'}
+			style:--text-bg-color={settings.textBgColor}
 			style:--text-bg-padding="{textBgPadding}px"
 		>
 			{@html processedHtml}
@@ -188,63 +159,39 @@
 	{/if}
 	<div
 		class="slide-content"
-		class:has-text-bg={textBgEnabled}
-		lang={hyphenate ? textLang : undefined}
-		style:text-align={textAlign}
+		class:has-text-bg={settings.textBgEnabled}
+		lang={settings.hyphenate ? settings.textLang : undefined}
+		style:text-align={settings.textAlign}
 		style:font-size="{baseFontSize}px"
-		style:color={fontColor}
+		style:color={settings.fontColor}
 		style:font-family={font}
-		style:hyphens={hyphenate ? 'auto' : 'none'}
-		style:-webkit-hyphens={hyphenate ? 'auto' : 'none'}
-		style:--text-bg-color={textBgColor}
+		style:hyphens={settings.hyphenate ? 'auto' : 'none'}
+		style:-webkit-hyphens={settings.hyphenate ? 'auto' : 'none'}
+		style:--text-bg-color={settings.textBgColor}
 		style:--text-bg-padding="{textBgPadding}px"
 	>
 		{@html processedHtml}
 	</div>
 
+	{#if images}
+		<SlideImages
+			{images}
+			{settings}
+			{width}
+			{height}
+			geometryScale={gs}
+			slideIndex={render.slideIndex}
+			{showPlaceholders}
+		/>
+	{/if}
+
 	<!-- Bottom corners row (always rendered for grid layout) -->
-	<div class="corner-row bottom">
-		{#if corners.bottomLeft.enabled}
-			<div
-				class="corner-item left"
-				style:color={fontColor}
-				style:font-family={getCornerFont(corners.bottomLeft.fontFamily)}
-				style:font-size="{corners.bottomLeft.size}px"
-			>
-				{#if corners.bottomLeft.type === 'image' && corners.bottomLeft.image}
-					<img
-						src={corners.bottomLeft.image}
-						alt=""
-						style:height="{corners.bottomLeft.size * 2}px"
-					/>
-				{:else}
-					{@html parseInline(corners.bottomLeft.text)}
-				{/if}
-			</div>
-		{/if}
-		{#if corners.bottomRight.enabled}
-			<div
-				class="corner-item right"
-				style:color={fontColor}
-				style:font-family={getCornerFont(corners.bottomRight.fontFamily)}
-				style:font-size="{corners.bottomRight.size}px"
-			>
-				{#if corners.bottomRight.type === 'image' && corners.bottomRight.image}
-					<img
-						src={corners.bottomRight.image}
-						alt=""
-						style:height="{corners.bottomRight.size * 2}px"
-					/>
-				{:else}
-					{@html parseInline(corners.bottomRight.text)}
-				{/if}
-			</div>
-		{/if}
-	</div>
+	{@render cornerRow('bottom')}
 </div>
 
 <style>
 	.slide {
+		position: relative;
 		display: grid;
 		grid-template-rows: auto 1fr auto;
 		box-sizing: border-box;

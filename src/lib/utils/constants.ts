@@ -16,6 +16,13 @@ export const CORNERS: Corner[] = [
 ];
 
 // Export quality scale options
+/** Corner keys grouped by the row they render in, so Slide.svelte can loop instead of
+ * repeating four near-identical blocks. */
+export const CORNER_ROWS: Record<'top' | 'bottom', string[]> = {
+	top: ['topLeft', 'topRight'],
+	bottom: ['bottomLeft', 'bottomRight'],
+};
+
 export const EXPORT_SCALES: ExportScale[] = [
 	{ value: 1, label: 'Standard', desc: '1080px' },
 	{ value: 2, label: 'High', desc: '2160px' },
@@ -61,21 +68,21 @@ export const DEFAULT_CORNER: CornerConfig = {
 
 // Default settings for each document
 export const DEFAULT_SETTINGS: Settings = {
-	selectedDimension: 'square',
+	selectedDimension: 'portrait',
 	exportScale: 2,
 	previewZoom: [0.35],
-	textAlign: 'center',
-	verticalAlign: 'center',
+	textAlign: 'left',
+	verticalAlign: 'top',
 	fontScale: 1,
-	fontColor: '#ffffff',
+	fontColor: '#000000',
 	fontFamily: '',
 	slidePadding: 60,
 	lineHeight: 1.5,
 	hyphenate: false,
 	textLang: 'en',
 	continuousBackground: true,
-	bgType: 'gradient',
-	bgSolidColor: '#667eea',
+	bgType: 'solid',
+	bgSolidColor: '#ffffff',
 	gradientTheme: 'dark',
 	gradientColorCount: 3,
 	gradientColors: ['#667eea', '#764ba2', '#f093fb'],
@@ -89,7 +96,28 @@ export const DEFAULT_SETTINGS: Settings = {
 	textBgEnabled: false,
 	textBgColor: 'rgba(0,0,0,0.5)',
 	textBgPadding: 4,
+	imageShadowSize: 28,
+	imageShadowSoftness: 60,
+	frameGap: 12,
+	frameRadius: 16,
+	frameBorderWidth: 1,
+	frameBorderColor: '#000000',
+	frameBorderOpacity: 100,
 };
+
+/** Smallest a frame may be resized to, in base px. */
+export const MIN_FRAME_PX = 40;
+
+/** Snap threshold for normal images, in *screen* px — converted per-axis using the current
+ * preview zoom, since a fixed fractional threshold feels wrong across 15%–60% zoom. */
+export const SNAP_PX = 8;
+
+/** Upper bound on zooming a bitmap inside its frame. */
+export const MAX_IMAGE_ZOOM = 8;
+
+/** Pasted bitmaps are downscaled to this longest edge — the largest export size (1080 * 3),
+ * beyond which we would only be burning memory and export time. */
+export const MAX_IMAGE_PX = 3240;
 
 // Predefined positions for gradient mesh blobs
 export const MESH_POSITIONS: string[] = [
