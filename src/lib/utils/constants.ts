@@ -3,7 +3,7 @@ import type { Dimension, Corner, ExportScale, CornerConfig, Settings } from '$li
 // Dimension presets for Instagram formats
 export const DIMENSIONS: Record<string, Dimension> = {
 	square: { width: 1080, height: 1080, label: 'Square (1:1)' },
-	portrait: { width: 1080, height: 1350, label: 'Portrait (4:5)' },
+	portrait: { width: 1080, height: 1440, label: 'Portrait (3:4)' },
 	landscape: { width: 1080, height: 608, label: 'Landscape (16:9)' },
 };
 
