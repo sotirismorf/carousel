@@ -17,7 +17,7 @@ export function imageFilesFromDataTransfer(data: DataTransfer | null): File[] {
 	return Array.from(data.files).filter((file) => file.type.startsWith('image/'));
 }
 
-function readAsDataUrl(file: Blob): Promise<string> {
+export function readAsDataUrl(file: Blob): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
 		reader.onload = () => resolve(reader.result as string);

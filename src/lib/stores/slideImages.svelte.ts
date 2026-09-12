@@ -9,15 +9,15 @@ import type {
 } from '$lib/types';
 
 /**
- * Images for each document, held in memory only — deliberately never written to localStorage,
- * where a handful of pasted bitmaps would blow past the 5MB quota. The small global knobs
- * (shadow, gap, radius, border) live in the persisted `Settings` instead.
+ * Images for each document. Saving and restoring is handled by the persistence store, which
+ * reads {@link decks} and restores through `hydrate`. The small global knobs (shadow, gap,
+ * radius, border) live in `Settings` instead.
  *
  * State is keyed by document, not by slide: images live on one continuous strip and are free
  * to cross slide boundaries, so there is nothing per-slide to key by. That also means editing
  * the markdown can no longer shuffle images onto the wrong slide.
  *
- * Contains no `$effect`, so unlike the documents store it can be created anywhere.
+ * Contains no `$effect`, so it can be created anywhere.
  */
 
 function emptyDeck(): DeckImages {
@@ -260,7 +260,20 @@ export function createSlideImagesStore() {
 		delete decks[documentId];
 	}
 
+	/** Replace every deck with saved state. History is cleared: it can't span sessions. */
+	function hydrate(saved: Record<string, DeckImages>): void {
+		for (const id of Object.keys(decks)) delete decks[id];
+		Object.assign(decks, saved);
+		undoStack.length = 0;
+		redoStack.length = 0;
+		selection = null;
+	}
+
 	return {
+		/** Every document's deck, keyed by document id. */
+		get decks() {
+			return decks;
+		},
 		get selection() {
 			return selection;
 		},
@@ -287,6 +300,7 @@ export function createSlideImagesStore() {
 		normalToFrame,
 		frameToNormal,
 		dropDocument,
+		hydrate,
 		beginHistory,
 		undo,
 		redo,

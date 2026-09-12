@@ -1,7 +1,10 @@
 import { DEFAULT_MARKDOWN, DEFAULT_SETTINGS } from '../utils/constants';
 import type { CarouselDocument, Settings } from '$lib/types';
 
-const STORAGE_KEY = 'carousel-documents';
+/**
+ * The open documents and which one is active. Saving and restoring is handled by the
+ * persistence store; this one only exposes {@link hydrate} for it to fill in saved state.
+ */
 
 function generateId(): string {
 	return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -17,50 +20,24 @@ function createDefaultDocument(): CarouselDocument {
 	};
 }
 
-function loadFromStorage(): { documents: CarouselDocument[]; activeId: string } | null {
-	if (typeof localStorage === 'undefined') {
-		return null;
-	}
-	try {
-		const stored = localStorage.getItem(STORAGE_KEY);
-		if (stored) {
-			const data = JSON.parse(stored);
-			if (data.documents && data.documents.length > 0) {
-				// Merge stored settings with defaults to handle missing keys from older saves
-				data.documents = data.documents.map((doc: CarouselDocument) => ({
-					...doc,
-					settings: { ...structuredClone(DEFAULT_SETTINGS), ...doc.settings } as Settings,
-				}));
-				return data;
-			}
-		}
-	} catch (e) {
-		console.error('Failed to load documents from storage:', e);
-	}
-	return null;
-}
-
-function saveToStorage(documents: CarouselDocument[], activeId: string): void {
-	if (typeof localStorage === 'undefined') return;
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify({ documents, activeId }));
-	} catch (e) {
-		console.error('Failed to save documents to storage:', e);
-	}
+/** Fill in settings added since the document was saved. */
+function normalizeDocument(doc: CarouselDocument): CarouselDocument {
+	return {
+		...doc,
+		settings: { ...structuredClone(DEFAULT_SETTINGS), ...doc.settings } as Settings,
+	};
 }
 
 export function createDocumentsStore() {
-	const stored = loadFromStorage();
-	const initialDocs = stored?.documents || [createDefaultDocument()];
-	const initialActiveId = stored?.activeId || initialDocs[0].id;
+	let documents = $state<CarouselDocument[]>([createDefaultDocument()]);
+	let activeId = $state<string>(documents[0].id);
 
-	let documents = $state<CarouselDocument[]>(initialDocs);
-	let activeId = $state<string>(initialActiveId);
-
-	// Persist on changes
-	$effect(() => {
-		saveToStorage(documents, activeId);
-	});
+	/** Replace everything with saved state. Ignored if there is nothing to restore. */
+	function hydrate(saved: { documents: CarouselDocument[]; activeId: string }): void {
+		if (saved.documents.length === 0) return;
+		documents = saved.documents.map(normalizeDocument);
+		activeId = documents.some((d) => d.id === saved.activeId) ? saved.activeId : documents[0].id;
+	}
 
 	function getActiveDocument(): CarouselDocument | undefined {
 		return documents.find((d) => d.id === activeId) || documents[0];
@@ -116,6 +93,7 @@ export function createDocumentsStore() {
 		get activeSettings() {
 			return getActiveDocument()?.settings;
 		},
+		hydrate,
 		getActiveDocument,
 		setActiveContent,
 		addDocument,
@@ -125,3 +103,5 @@ export function createDocumentsStore() {
 		updateActiveSettings,
 	};
 }
+
+export type DocumentsStore = ReturnType<typeof createDocumentsStore>;

@@ -8,13 +8,15 @@
 	import { DIMENSIONS } from '$lib/utils/constants';
 	import { createDocumentsStore } from '$lib/stores/documents.svelte';
 	import { createSlideImagesStore } from '$lib/stores/slideImages.svelte';
+	import { createPersistence } from '$lib/stores/persistence.svelte';
+	import { DEFAULT_UI_STATE } from '$lib/persistence/workspace';
 	import {
 		fileToImageSource,
 		imageFilesFromClipboard,
 		imageFilesFromDataTransfer,
 	} from '$lib/utils/clipboardImages';
 	import { normalImageHeight, zoomFrameImage } from '$lib/utils/imageFit';
-	import type { DeckImages, Selection, Settings } from '$lib/types';
+	import type { DeckImages, Selection, Settings, UiState } from '$lib/types';
 
 	import { Button } from '$lib/components/ui/button';
 	import { Slider } from '$lib/components/ui/slider';
@@ -32,19 +34,19 @@
 	/** Shared placeholder for documents with no images yet, so we never allocate per render. */
 	const EMPTY_DECK: DeckImages = { normal: [], frames: [] };
 
-	// Documents store for persistence
 	const docs = createDocumentsStore();
-	// Per-slide images. In-memory only — see the store for why.
 	const imageStore = createSlideImagesStore();
+	// Editor chrome restored on reload, alongside documents and images.
+	const ui = $state<UiState>({ ...DEFAULT_UI_STATE });
+	// Restores the last session on load, then autosaves every change.
+	const persistence = createPersistence(docs, imageStore, ui);
 
 	// State - UI (not per-document)
 	let isExporting = $state(false);
-	let editorCollapsed = $state(false);
 	let editingTabId = $state<string | null>(null);
 	let editingTabName = $state('');
 
 	// Mobile state
-	let mobilePanel = $state<'preview' | 'edit' | 'settings'>('preview');
 	let isMobile = $state(
 		typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
 	);
@@ -341,36 +343,46 @@
 		randomizeGradient();
 	}
 
+	/** Read an uploaded image through the same downscaling as pasted ones, keeping saves small. */
+	function readUpload(
+		event: Event & { currentTarget: HTMLInputElement },
+		apply: (dataUrl: string) => void
+	): void {
+		const file = event.currentTarget.files?.[0];
+		if (!file) return;
+		fileToImageSource(file).then(
+			(source) => apply(source.dataUrl),
+			(err: unknown) => console.error('Could not read image:', err)
+		);
+	}
+
 	function handleImageUpload(
 		key: string,
 		event: Event & { currentTarget: HTMLInputElement }
 	): void {
-		const file = event.currentTarget.files?.[0];
-		if (!file) return;
-		const reader = new FileReader();
-		reader.onload = (e: ProgressEvent<FileReader>) => {
-			settings.corners[key].image = e.target!.result as string;
+		readUpload(event, (dataUrl) => {
+			settings.corners[key].image = dataUrl;
 			settings.corners[key].type = 'image';
-		};
-		reader.readAsDataURL(file);
+		});
 	}
 
 	function handleBgImageUpload(event: Event & { currentTarget: HTMLInputElement }): void {
-		const file = event.currentTarget.files?.[0];
-		if (!file) return;
-		const reader = new FileReader();
-		reader.onload = (e: ProgressEvent<FileReader>) => {
-			settings.bgImage = e.target!.result as string;
+		readUpload(event, (dataUrl) => {
+			settings.bgImage = dataUrl;
 			settings.bgType = 'image';
-		};
-		reader.readAsDataURL(file);
+		});
 	}
 </script>
 
 <svelte:window onpaste={handlePaste} onkeydown={handleKeydown} />
 
+<!-- Children stay hidden until the saved session is restored, so the default document never
+     flashes up first. The root itself stays visible to keep the dark background. -->
 <div
-	class="dark flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background text-foreground text-sm"
+	class="dark flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background text-foreground text-sm {persistence.status ===
+	'loading'
+		? '*:invisible'
+		: ''}"
 >
 	<!-- Mobile header -->
 	<header
@@ -390,7 +402,7 @@
 	<aside
 		class="bg-card border-border flex flex-col shrink-0 overflow-hidden
            w-full flex-1 md:flex-none md:w-64 md:min-w-64 md:border-r"
-		class:hidden={isMobile && mobilePanel !== 'settings'}
+		class:hidden={isMobile && ui.mobilePanel !== 'settings'}
 	>
 		<!-- Desktop-only header -->
 		<header class="hidden md:block p-4 border-b border-border">
@@ -405,6 +417,12 @@
 		</header>
 
 		<div class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-5">
+			{#if persistence.status === 'unavailable' || persistence.saveFailed}
+				<p class="text-xs text-destructive" role="alert">
+					Changes aren't being saved in this browser, so they'll be lost when you close the tab.
+				</p>
+			{/if}
+
 			<FormatControls
 				bind:selectedDimension={settings.selectedDimension}
 				bind:exportScale={settings.exportScale}
@@ -482,7 +500,7 @@
 	<!-- Preview wrapper -->
 	<div
 		class="flex flex-col flex-1 min-w-0 min-h-0"
-		class:hidden={isMobile && mobilePanel !== 'preview'}
+		class:hidden={isMobile && ui.mobilePanel !== 'preview'}
 	>
 		<main class="flex-1 min-w-0 grid place-items-center overflow-auto p-2 md:p-5">
 			{#if slides.length === 0}
@@ -577,13 +595,13 @@
 	<aside
 		class="shrink-0 bg-card border-border flex flex-col transition-all duration-200 overflow-hidden
            md:h-full md:max-h-full md:border-l"
-		class:hidden={isMobile && mobilePanel !== 'edit'}
-		class:w-full={isMobile && mobilePanel === 'edit'}
-		class:flex-1={isMobile && mobilePanel === 'edit'}
-		class:w-[560px]={!isMobile && !editorCollapsed}
-		class:w-0={!isMobile && editorCollapsed}
+		class:hidden={isMobile && ui.mobilePanel !== 'edit'}
+		class:w-full={isMobile && ui.mobilePanel === 'edit'}
+		class:flex-1={isMobile && ui.mobilePanel === 'edit'}
+		class:w-[560px]={!isMobile && !ui.editorCollapsed}
+		class:w-0={!isMobile && ui.editorCollapsed}
 	>
-		{#if isMobile || !editorCollapsed}
+		{#if isMobile || !ui.editorCollapsed}
 			<!-- Header with tabs and controls -->
 			<div class="flex items-center border-b border-border bg-muted/30 shrink-0 min-h-fit">
 				<div class="flex-1 flex items-center overflow-x-auto">
@@ -656,7 +674,7 @@
 					variant="ghost"
 					size="sm"
 					class="hidden md:flex h-8 w-8 p-0 shrink-0"
-					onclick={() => (editorCollapsed = true)}
+					onclick={() => (ui.editorCollapsed = true)}
 					title="Hide editor"
 				>
 					⟩
@@ -674,12 +692,12 @@
 	</aside>
 
 	<!-- Show editor button when collapsed (desktop only) -->
-	{#if editorCollapsed && !isMobile}
+	{#if ui.editorCollapsed && !isMobile}
 		<Button
 			variant="secondary"
 			size="sm"
 			class="fixed right-4 top-1/2 -translate-y-1/2 z-20"
-			onclick={() => (editorCollapsed = false)}
+			onclick={() => (ui.editorCollapsed = false)}
 		>
 			⟨ Editor
 		</Button>
@@ -693,9 +711,9 @@
 		<!-- Preview button -->
 		<button
 			class="flex-1 flex flex-col items-center justify-center gap-1 min-h-14 text-xs transition-colors"
-			class:text-foreground={mobilePanel === 'preview'}
-			class:text-muted-foreground={mobilePanel !== 'preview'}
-			onclick={() => (mobilePanel = 'preview')}
+			class:text-foreground={ui.mobilePanel === 'preview'}
+			class:text-muted-foreground={ui.mobilePanel !== 'preview'}
+			onclick={() => (ui.mobilePanel = 'preview')}
 		>
 			<svg
 				width="20"
@@ -728,9 +746,9 @@
 		<!-- Edit button -->
 		<button
 			class="flex-1 flex flex-col items-center justify-center gap-1 min-h-14 text-xs transition-colors"
-			class:text-foreground={mobilePanel === 'edit'}
-			class:text-muted-foreground={mobilePanel !== 'edit'}
-			onclick={() => (mobilePanel = 'edit')}
+			class:text-foreground={ui.mobilePanel === 'edit'}
+			class:text-muted-foreground={ui.mobilePanel !== 'edit'}
+			onclick={() => (ui.mobilePanel = 'edit')}
 		>
 			<svg
 				width="20"
@@ -751,9 +769,9 @@
 		<!-- Settings button -->
 		<button
 			class="flex-1 flex flex-col items-center justify-center gap-1 min-h-14 text-xs transition-colors"
-			class:text-foreground={mobilePanel === 'settings'}
-			class:text-muted-foreground={mobilePanel !== 'settings'}
-			onclick={() => (mobilePanel = 'settings')}
+			class:text-foreground={ui.mobilePanel === 'settings'}
+			class:text-muted-foreground={ui.mobilePanel !== 'settings'}
+			onclick={() => (ui.mobilePanel = 'settings')}
 		>
 			<svg
 				width="20"

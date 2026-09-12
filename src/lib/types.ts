@@ -89,10 +89,16 @@ export interface FrameRect extends StripRect {
 	image: FrameImage | null;
 }
 
-/** All images for one document. Held in memory only — never persisted. */
+/** All images for one document. Persisted to IndexedDB along with the rest of the workspace. */
 export interface DeckImages {
 	normal: NormalImage[];
 	frames: FrameRect[];
+}
+
+/** Editor chrome that is restored on reload, so the app reopens as it was left. */
+export interface UiState {
+	editorCollapsed: boolean;
+	mobilePanel: 'preview' | 'edit' | 'settings';
 }
 
 export type Selection = { kind: 'normal'; id: string } | { kind: 'frame'; id: string } | null;
